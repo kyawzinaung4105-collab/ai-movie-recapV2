@@ -2,14 +2,20 @@ import { useState } from 'react';
 import { Download, Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
+interface SubtitleItem {
+  start: number;
+  end: number;
+  text: string;
+}
+
 interface VideoExporterProps {
   movieTitle: string;
   disabled?: boolean;
-  audioTrack?: HTMLAudioElement | null; // Custom MP3 audio if any
-  subtitles?: { start: number; end: number; text: string }[]; // Subtitles list
+  audioTrack?: HTMLAudioElement | null;
+  subtitles?: SubtitleItem[];
 }
 
-export function VideoExporter({ movieTitle, disabled, audioTrack }: VideoExporterProps) {
+export function VideoExporter({ movieTitle, disabled, audioTrack, subtitles = [] }: VideoExporterProps) {
   const [exporting, setExporting] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState('');
@@ -35,40 +41,40 @@ export function VideoExporter({ movieTitle, disabled, audioTrack }: VideoExporte
       
       if (!ctx) throw new Error('Could not create canvas context.');
 
-      // Setup canvas stream and audio destination to combine video + audio
+      // Setup Web Audio API to capture both video audio and custom MP3 audio
       const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
       const dest = audioCtx.createMediaStreamDestination();
 
-      // Connect video audio if available
       try {
         const videoSourceNode = audioCtx.createMediaElementSource(videoElement);
         videoSourceNode.connect(dest);
-        videoSourceNode.connect(audioCtx.destination);
-      } catch (e) {
-        // Already connected or cross-origin restriction safeguard
-      }
+      } catch (e) {}
 
-      // Connect custom MP3 audio track if provided
-      let customAudioNode: MediaElementAudioSourceNode | null = null;
       if (audioTrack) {
         try {
-          customAudioNode = audioCtx.createMediaElementSource(audioTrack);
+          const customAudioNode = audioCtx.createMediaElementSource(audioTrack);
           customAudioNode.connect(dest);
-          customAudioNode.connect(audioCtx.destination);
         } catch (e) {}
       }
 
       const canvasStream = canvas.captureStream(30);
+      const audioTracks = dest.stream.getAudioTracks();
       const combinedStream = new MediaStream([
         ...canvasStream.getVideoTracks(),
-        ...dest.stream.getAudioTracks()
+        ...(audioTracks.length > 0 ? audioTracks : [])
       ]);
 
-      const mediaRecorder = new MediaRecorder(combinedStream, { mimeType: 'video/webm;codecs=vp8,opus' });
+      const mimeType = MediaRecorder.isSupported('video/webm;codecs=vp9,opus')
+        ? 'video/webm;codecs=vp9,opus'
+        : 'video/webm';
+
+      const mediaRecorder = new MediaRecorder(combinedStream, { mimeType });
       const chunks: Blob[] = [];
 
-      mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
-      
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) chunks.push(e.data);
+      };
+
       const recordingDone = new Promise((resolve) => {
         mediaRecorder.onstop = () => {
           const blob = new Blob(chunks, { type: 'video/mp4' });
@@ -76,6 +82,7 @@ export function VideoExporter({ movieTitle, disabled, audioTrack }: VideoExporte
         };
       });
 
+      // Reset playback positions
       videoElement.pause();
       videoElement.currentTime = 0;
       if (audioTrack) {
@@ -94,34 +101,57 @@ export function VideoExporter({ movieTitle, disabled, audioTrack }: VideoExporte
       }
 
       const duration = videoElement.duration || 10;
-      const fps = 30;
-      const totalFrames = Math.floor(duration * fps);
-      const frameInterval = 1000 / fps;
 
-      for (let frame = 0; frame < totalFrames; frame++) {
-        const currentTime = frame / fps;
-        videoElement.currentTime = currentTime;
-        
-        // Wait for frame to seek
-        await new Promise((r) => requestAnimationFrame(r));
+      // Real-time smooth rendering loop using requestAnimationFrame
+      const renderFrame = () => {
+        if (videoElement.ended || videoElement.paused || videoElement.currentTime >= duration) {
+          mediaRecorder.stop();
+          return;
+        }
 
-        setProgress(Math.min(95, Math.floor((currentTime / duration) * 100)));
+        const currentTime = videoElement.currentTime;
+        const currentProgress = Math.min(95, Math.floor((currentTime / duration) * 100));
+        setProgress(currentProgress);
 
-        // Draw video frame
+        // 1. Draw video frame
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
 
-        // Optional: Draw custom text/subtitles directly onto canvas frame if needed
-        // ctx.font = '28px sans-serif';
-        // ctx.fillStyle = 'white';
-        // ctx.textAlign = 'center';
-        // ctx.fillText("Subtitle text here", canvas.width / 2, canvas.height - 80);
-      }
+        // 2. Find and draw active subtitle for current timestamp
+        const activeSub = subtitles.find(
+          (sub) => currentTime >= sub.start && currentTime <= sub.end
+        );
 
-      videoElement.pause();
-      if (audioTrack) audioTrack.pause();
-      mediaRecorder.stop();
+        if (activeSub) {
+          ctx.save();
+          ctx.font = 'bold 36px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'bottom';
+          
+          // Subtitle text styling with shadow for readability
+          ctx.fillStyle = '#ffffff';
+          ctx.strokeStyle = '#000000';
+          ctx.lineWidth = 4;
+
+          const x = canvas.width / 2;
+          const y = canvas.height - 50;
+
+          ctx.strokeText(activeSub.text, x, y);
+          ctx.fillText(activeSub.text, x, y);
+          ctx.restore();
+        }
+
+        requestAnimationFrame(renderFrame);
+      };
+
+      requestAnimationFrame(renderFrame);
 
       const blob = await recordingDone as Blob;
+      
+      // Stop media elements
+      videoElement.pause();
+      if (audioTrack) audioTrack.pause();
+
       setProgress(100);
       
       const url = URL.createObjectURL(blob);
@@ -149,7 +179,7 @@ export function VideoExporter({ movieTitle, disabled, audioTrack }: VideoExporte
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <Loader2 className="h-4 w-4 animate-spin text-primary-600" />
-            <span className="text-sm text-slate-600">Rendering Subtitles & Video... {progress}%</span>
+            <span className="text-sm text-slate-600">Rendering Video, Audio & Subtitles... {progress}%</span>
           </div>
           <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
             <div
@@ -170,7 +200,7 @@ export function VideoExporter({ movieTitle, disabled, audioTrack }: VideoExporte
       {done && !error && (
         <div className="flex items-start gap-3 rounded-xl border border-primary-200 bg-primary-50 px-4 py-3 text-sm text-primary-700">
           <Download className="mt-0.5 h-5 w-5 flex-shrink-0" />
-          <span>MP4 export complete with subtitles for "{movieTitle}".</span>
+          <span>MP4 export complete with audio and subtitles for "{movieTitle}".</span>
         </div>
       )}
 
@@ -186,7 +216,7 @@ export function VideoExporter({ movieTitle, disabled, audioTrack }: VideoExporte
           </>
         ) : (
           <>
-            <Download className="h-5 w-5" /> Download MP4 with Subtitles
+            <Download className="h-5 w-5" /> Download MP4 with Audio & Subtitles
           </>
         )}
       </Button>
