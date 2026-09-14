@@ -20,13 +20,24 @@ export function VideoExporter({ movieTitle, disabled }: VideoExporterProps) {
     setProgress(0);
 
     try {
-      for (let i = 0; i <= 100; i += 5) {
-        setProgress(i);
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      }
+      // Find the video element on the page to record/download its source
+      const videoElement = document.querySelector('video') as HTMLVideoElement;
       
-      // Create a dummy video blob download so it actually downloads a file
-      const blob = new Blob(['mock video content for ' + movieTitle], { type: 'video/mp4' });
+      if (!videoElement || !videoElement.src) {
+        throw new Error('No video found to export.');
+      }
+
+      for (let i = 0; i <= 90; i += 10) {
+        setProgress(i);
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      }
+
+      // Fetch the actual video blob from the source
+      const response = await fetch(videoElement.src);
+      const blob = await response.blob();
+      
+      setProgress(100);
+      
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -37,8 +48,8 @@ export function VideoExporter({ movieTitle, disabled }: VideoExporterProps) {
       URL.revokeObjectURL(url);
 
       setDone(true);
-    } catch {
-      setError('MP4 export failed. Please try again.');
+    } catch (err: any) {
+      setError(err.message || 'MP4 export failed. Please try again.');
     } finally {
       setExporting(false);
     }
@@ -52,7 +63,7 @@ export function VideoExporter({ movieTitle, disabled }: VideoExporterProps) {
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <Loader2 className="h-4 w-4 animate-spin text-primary-600" />
-            <span className="text-sm text-slate-600">Preparing MP4... {progress}%</span>
+            <span className="text-sm text-slate-600">Exporting Video... {progress}%</span>
           </div>
           <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
             <div
