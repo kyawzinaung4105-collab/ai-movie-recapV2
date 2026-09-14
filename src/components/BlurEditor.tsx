@@ -21,13 +21,12 @@ export function BlurEditor({ settings, onChange, videoSource }: BlurEditorProps)
     onChange({ ...settings, strength: val });
   };
 
-  const handleMouseDown = (e: React.MouseEvent, mode: 'move' | 'resize') => {
-    e.preventDefault();
-    e.stopPropagation();
+  // Mouse / Touch Start handler (PC နဲ့ Phone နှစ်ခုလုံးအတွက်)
+  const handleStart = (clientX: number, clientY: number, mode: 'move' | 'resize') => {
     setDragMode(mode);
     setDragStart({
-      x: e.clientX,
-      y: e.clientY,
+      x: clientX,
+      y: clientY,
       bx: settings.x,
       by: settings.y,
       bw: settings.width,
@@ -38,12 +37,12 @@ export function BlurEditor({ settings, onChange, videoSource }: BlurEditorProps)
   useEffect(() => {
     if (!dragMode) return;
 
-    const handleMouseMove = (e: MouseEvent) => {
+    const handleMove = (clientX: number, clientY: number) => {
       const overlay = overlayRef.current;
       if (!overlay) return;
       const rect = overlay.getBoundingClientRect();
-      const dx = (e.clientX - dragStart.x) / rect.width;
-      const dy = (e.clientY - dragStart.y) / rect.height;
+      const dx = (clientX - dragStart.x) / rect.width;
+      const dy = (clientY - dragStart.y) / rect.height;
 
       if (dragMode === 'move') {
         onChange({
@@ -58,15 +57,27 @@ export function BlurEditor({ settings, onChange, videoSource }: BlurEditorProps)
       }
     };
 
-    const handleMouseUp = () => {
+    const handleMouseMove = (e: MouseEvent) => handleMove(e.clientX, e.clientY);
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length > 0) {
+        handleMove(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    };
+
+    const handleEnd = () => {
       setDragMode(null);
     };
 
     document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
+    document.addEventListener('mouseup', handleEnd);
+    document.addEventListener('touchmove', handleTouchMove);
+    document.addEventListener('touchend', handleEnd);
+
     return () => {
       document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('mouseup', handleEnd);
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('touchend', handleEnd);
     };
   }, [dragMode, dragStart, settings, onChange]);
 
@@ -94,11 +105,11 @@ export function BlurEditor({ settings, onChange, videoSource }: BlurEditorProps)
       {settings.enabled && (
         <>
           {videoSource.isDirectFile ? (
-            <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-black" ref={overlayRef}>
+            <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-black touch-none" ref={overlayRef}>
               <video
                 src={videoSource.objectUrl}
                 controls
-                className="w-full max-h-[400px] pointer-events-none"
+                className="w-full max-h-[400px]"
               />
               <div
                 className="absolute border-2 border-primary-400 cursor-move"
@@ -111,13 +122,31 @@ export function BlurEditor({ settings, onChange, videoSource }: BlurEditorProps)
                   WebkitBackdropFilter: `blur(${settings.strength / 10}px)`,
                   background: 'rgba(0,0,0,0.1)',
                 }}
-                onMouseDown={(e) => handleMouseDown(e, 'move')}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  handleStart(e.clientX, e.clientY, 'move');
+                }}
+                onTouchStart={(e) => {
+                  if (e.touches.length > 0) {
+                    handleStart(e.touches[0].clientX, e.touches[0].clientY, 'move');
+                  }
+                }}
               >
                 <div
-                  className="absolute -bottom-1 -right-1 h-4 w-4 cursor-nwse-resize rounded-bl-md border-l-2 border-b-2 border-primary-400 bg-primary-200"
-                  onMouseDown={(e) => handleMouseDown(e, 'resize')}
+                  className="absolute -bottom-1 -right-1 h-5 w-5 cursor-nwse-resize rounded-bl-md border-l-2 border-b-2 border-primary-400 bg-primary-200 flex items-center justify-center"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleStart(e.clientX, e.clientY, 'resize');
+                  }}
+                  onTouchStart={(e) => {
+                    e.stopPropagation();
+                    if (e.touches.length > 0) {
+                      handleStart(e.touches[0].clientX, e.touches[0].clientY, 'resize');
+                    }
+                  }}
                 />
-                <div className="absolute inset-0 flex items-center justify-center">
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                   <Move className="h-4 w-4 text-white/70" />
                 </div>
               </div>
