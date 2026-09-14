@@ -34,6 +34,10 @@ export function VideoExporter({ movieTitle, disabled, audioTrack, subtitles = []
         throw new Error('No video found to export.');
       }
 
+      if (typeof MediaRecorder === 'undefined') {
+        throw new Error('MediaRecorder is not supported in this browser.');
+      }
+
       const canvas = document.createElement('canvas');
       canvas.width = 1280;
       canvas.height = 720;
@@ -64,8 +68,10 @@ export function VideoExporter({ movieTitle, disabled, audioTrack, subtitles = []
         ...(audioTracks.length > 0 ? audioTracks : [])
       ]);
 
-      const mimeType = MediaRecorder.isSupported('video/webm;codecs=vp9,opus')
+      const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
         ? 'video/webm;codecs=vp9,opus'
+        : MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus')
+        ? 'video/webm;codecs=vp8,opus'
         : 'video/webm';
 
       const mediaRecorder = new MediaRecorder(combinedStream, { mimeType });
@@ -105,7 +111,9 @@ export function VideoExporter({ movieTitle, disabled, audioTrack, subtitles = []
       // Real-time smooth rendering loop using requestAnimationFrame
       const renderFrame = () => {
         if (videoElement.ended || videoElement.paused || videoElement.currentTime >= duration) {
-          mediaRecorder.stop();
+          if (mediaRecorder.state !== 'inactive') {
+            mediaRecorder.stop();
+          }
           return;
         }
 
@@ -128,7 +136,6 @@ export function VideoExporter({ movieTitle, disabled, audioTrack, subtitles = []
           ctx.textAlign = 'center';
           ctx.textBaseline = 'bottom';
           
-          // Subtitle text styling with shadow for readability
           ctx.fillStyle = '#ffffff';
           ctx.strokeStyle = '#000000';
           ctx.lineWidth = 4;
@@ -148,7 +155,6 @@ export function VideoExporter({ movieTitle, disabled, audioTrack, subtitles = []
 
       const blob = await recordingDone as Blob;
       
-      // Stop media elements
       videoElement.pause();
       if (audioTrack) audioTrack.pause();
 
