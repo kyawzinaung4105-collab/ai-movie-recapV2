@@ -5,9 +5,11 @@ import { Button } from '@/components/ui/Button';
 interface VideoExporterProps {
   movieTitle: string;
   disabled?: boolean;
+  audioTrack?: HTMLAudioElement | null; // Custom MP3 audio if any
+  subtitles?: { start: number; end: number; text: string }[]; // Subtitles list
 }
 
-export function VideoExporter({ movieTitle, disabled }: VideoExporterProps) {
+export function VideoExporter({ movieTitle, disabled, audioTrack }: VideoExporterProps) {
   const [exporting, setExporting] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState('');
@@ -26,62 +28,103 @@ export function VideoExporter({ movieTitle, disabled }: VideoExporterProps) {
         throw new Error('No video found to export.');
       }
 
-      // Capture the preview container (which includes subtitles and overlays) if available
-      const previewContainer = document.querySelector('.relative.w-full') || videoElement.parentElement;
+      const canvas = document.createElement('canvas');
+      canvas.width = 1280;
+      canvas.height = 720;
+      const ctx = canvas.getContext('2d');
       
-      let blob: Blob;
+      if (!ctx) throw new Error('Could not create canvas context.');
 
-      if (window.MediaRecorder && previewContainer) {
-        // Advanced client-side recording to burn-in subtitles/overlays from the DOM
-        const canvas = document.createElement('canvas');
-        canvas.width = 1280;
-        canvas.height = 720;
-        const ctx = canvas.getContext('2d');
-        
-        const stream = canvas.captureStream(30);
-        const mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9' });
-        const chunks: Blob[] = [];
+      // Setup canvas stream and audio destination to combine video + audio
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const dest = audioCtx.createMediaStreamDestination();
 
-        mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
-        
-        const recordingDone = new Promise((resolve) => {
-          mediaRecorder.onstop = () => {
-            blob = new Blob(chunks, { type: 'video/mp4' });
-            resolve(true);
-          };
-        });
-
-        mediaRecorder.start();
-        videoElement.currentTime = 0;
-        await videoElement.play().catch(() => {});
-
-        const duration = videoElement.duration || 10;
-        const interval = 100;
-        
-        for (let t = 0; t < duration * 1000; t += interval) {
-          setProgress(Math.min(95, Math.floor((t / (duration * 1000)) * 100)));
-          if (ctx) {
-            ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
-          }
-          await new Promise((r) => setTimeout(r, interval));
-        }
-
-        videoElement.pause();
-        mediaRecorder.stop();
-        await recordingDone;
-      } else {
-        // Fallback: direct fetch if MediaRecorder is restricted
-        for (let i = 0; i <= 90; i += 10) {
-          setProgress(i);
-          await new Promise((r) => setTimeout(r, 200));
-        }
-        const response = await fetch(videoElement.src);
-        blob = await response.blob();
+      // Connect video audio if available
+      try {
+        const videoSourceNode = audioCtx.createMediaElementSource(videoElement);
+        videoSourceNode.connect(dest);
+        videoSourceNode.connect(audioCtx.destination);
+      } catch (e) {
+        // Already connected or cross-origin restriction safeguard
       }
 
+      // Connect custom MP3 audio track if provided
+      let customAudioNode: MediaElementAudioSourceNode | null = null;
+      if (audioTrack) {
+        try {
+          customAudioNode = audioCtx.createMediaElementSource(audioTrack);
+          customAudioNode.connect(dest);
+          customAudioNode.connect(audioCtx.destination);
+        } catch (e) {}
+      }
+
+      const canvasStream = canvas.captureStream(30);
+      const combinedStream = new MediaStream([
+        ...canvasStream.getVideoTracks(),
+        ...dest.stream.getAudioTracks()
+      ]);
+
+      const mediaRecorder = new MediaRecorder(combinedStream, { mimeType: 'video/webm;codecs=vp8,opus' });
+      const chunks: Blob[] = [];
+
+      mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
+      
+      const recordingDone = new Promise((resolve) => {
+        mediaRecorder.onstop = () => {
+          const blob = new Blob(chunks, { type: 'video/mp4' });
+          resolve(blob);
+        };
+      });
+
+      videoElement.pause();
+      videoElement.currentTime = 0;
+      if (audioTrack) {
+        audioTrack.pause();
+        audioTrack.currentTime = 0;
+      }
+
+      mediaRecorder.start();
+      if (audioCtx.state === 'suspended') {
+        await audioCtx.resume();
+      }
+
+      await videoElement.play().catch(() => {});
+      if (audioTrack) {
+        await audioTrack.play().catch(() => {});
+      }
+
+      const duration = videoElement.duration || 10;
+      const fps = 30;
+      const totalFrames = Math.floor(duration * fps);
+      const frameInterval = 1000 / fps;
+
+      for (let frame = 0; frame < totalFrames; frame++) {
+        const currentTime = frame / fps;
+        videoElement.currentTime = currentTime;
+        
+        // Wait for frame to seek
+        await new Promise((r) => requestAnimationFrame(r));
+
+        setProgress(Math.min(95, Math.floor((currentTime / duration) * 100)));
+
+        // Draw video frame
+        ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+
+        // Optional: Draw custom text/subtitles directly onto canvas frame if needed
+        // ctx.font = '28px sans-serif';
+        // ctx.fillStyle = 'white';
+        // ctx.textAlign = 'center';
+        // ctx.fillText("Subtitle text here", canvas.width / 2, canvas.height - 80);
+      }
+
+      videoElement.pause();
+      if (audioTrack) audioTrack.pause();
+      mediaRecorder.stop();
+
+      const blob = await recordingDone as Blob;
       setProgress(100);
       
-      const url = URL.createObjectURL(blob!);
+      const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = `${movieTitle || 'movie-recap'}.mp4`;
