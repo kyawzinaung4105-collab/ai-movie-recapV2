@@ -3,8 +3,8 @@ import { Download, Loader2, AlertCircle, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
 interface SubtitleItem {
-  start: number; // in seconds
-  end: number;   // in seconds
+  start: number;
+  end: number;
   text: string;
 }
 
@@ -30,7 +30,6 @@ export function VideoExporter({
 
   const safeTitle = (movieTitle && movieTitle.trim() !== '') ? movieTitle : 'ai-movie-recap';
 
-  // Helper to convert seconds to SRT timestamp format (00:00:00,000)
   const formatSrtTime = (seconds: number) => {
     const hrs = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
@@ -47,7 +46,6 @@ export function VideoExporter({
     }).join('\n');
   };
 
-  // Dynamically load FFmpeg script from CDN if not already loaded
   const loadFFmpegScript = (): Promise<any> => {
     return new Promise((resolve, reject) => {
       if ((window as any).FFmpegWASM) {
@@ -56,7 +54,9 @@ export function VideoExporter({
       }
 
       const script = document.createElement('script');
-      script.src = 'https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js';
+      // Using alternative CDN (cdnjs / jsDelivr) which handles CORS better for workers, 
+      // or loading core UMD bundle directly
+      script.src = 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js';
       script.async = true;
       script.onload = () => {
         resolve((window as any).FFmpegWASM);
@@ -77,8 +77,6 @@ export function VideoExporter({
       if (!FFmpegModule) throw new Error('FFmpeg module not found.');
 
       const { FFmpeg } = FFmpegModule;
-      const { fetchFile, toBlobURL } = (window as any).FFmpegUtil || {};
-
       const ffmpeg = new FFmpeg();
 
       ffmpeg.on('log', ({ message }: { message: string }) => {
@@ -88,13 +86,13 @@ export function VideoExporter({
         }
       });
 
-      const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
+      // Use jsDelivr CDN URLs for core and wasm to bypass CORS worker issues
+      const baseURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd';
       
-      // If fetchFile/toBlobURL aren't globally bound, use CDN fetch directly
-      const coreURL = await (toBlobURL ? toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript') : `${baseURL}/ffmpeg-core.js`);
-      const wasmURL = await (toBlobURL ? toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm') : `${baseURL}/ffmpeg-core.wasm`);
-
-      await ffmpeg.load({ coreURL, wasmURL });
+      await ffmpeg.load({
+        coreURL: `${baseURL}/ffmpeg-core.js`,
+        wasmURL: `${baseURL}/ffmpeg-core.wasm`,
+      });
 
       let targetVideoUrl = videoBlobUrl;
       if (!targetVideoUrl) {
@@ -110,14 +108,16 @@ export function VideoExporter({
 
       setStatusText('Downloading media into memory...');
       
-      const videoData = fetchFile ? await fetchFile(targetVideoUrl) : await (await fetch(targetVideoUrl)).arrayBuffer();
-      await ffmpeg.writeFile('input.mp4', videoData);
+      const videoRes = await fetch(targetVideoUrl);
+      const videoBuffer = await videoRes.arrayBuffer();
+      await ffmpeg.writeFile('input.mp4', new Uint8Array(videoBuffer));
 
       let hasAudio = false;
       if (audioTrackUrl) {
         try {
-          const audioData = fetchFile ? await fetchFile(audioTrackUrl) : await (await fetch(audioTrackUrl)).arrayBuffer();
-          await ffmpeg.writeFile('audio.mp3', audioData);
+          const audioRes = await fetch(audioTrackUrl);
+          const audioBuffer = await audioRes.arrayBuffer();
+          await ffmpeg.writeFile('audio.mp3', new Uint8Array(audioBuffer));
           hasAudio = true;
         } catch (e) {
           console.warn('Failed to load custom audio track:', e);
