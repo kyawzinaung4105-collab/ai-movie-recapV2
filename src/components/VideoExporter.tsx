@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Download, Loader2, AlertCircle, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { FFmpeg } from '@ffmpeg/ffmpeg';
+import { toBlobURL } from '@ffmpeg/util';
 
 interface SubtitleItem {
   start: number;
@@ -46,26 +48,6 @@ export function VideoExporter({
     }).join('\n');
   };
 
-  // Load FFmpeg script safely via standard script tag injection
-  const loadFFmpegScript = (): Promise<any> => {
-    return new Promise((resolve, reject) => {
-      if ((window as any).FFmpegWASM) {
-        resolve((window as any).FFmpegWASM);
-        return;
-      }
-
-      const script = document.createElement('script');
-      script.src = 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js';
-      script.crossOrigin = 'anonymous';
-      script.async = true;
-      script.onload = () => {
-        resolve((window as any).FFmpegWASM);
-      };
-      script.onerror = () => reject(new Error('Failed to load FFmpeg CDN script.'));
-      document.body.appendChild(script);
-    });
-  };
-
   const handleFFmpegExport = async () => {
     setError('');
     setDone(false);
@@ -73,25 +55,21 @@ export function VideoExporter({
     setStatusText('Loading FFmpeg engine...');
 
     try {
-      const FFmpegModule = await loadFFmpegScript();
-      if (!FFmpegModule) throw new Error('FFmpeg module not found.');
-
-      const { FFmpeg } = FFmpegModule;
       const ffmpeg = new FFmpeg();
 
-      ffmpeg.on('log', ({ message }: { message: string }) => {
+      ffmpeg.on('log', ({ message }) => {
         console.log(message);
         if (message.includes('time=')) {
           setStatusText(`Processing... (${message})`);
         }
       });
 
-      const baseURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd';
+      const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
       
-      // Load core and wasm with explicit configuration to prevent worker cross-origin fetch failures
+      // Load core using toBlobURL to bypass all cross-origin worker fetch blocks
       await ffmpeg.load({
-        coreURL: `${baseURL}/ffmpeg-core.js`,
-        wasmURL: `${baseURL}/ffmpeg-core.wasm`,
+        coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
+        wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
       });
 
       let targetVideoUrl = videoBlobUrl;
@@ -177,7 +155,7 @@ export function VideoExporter({
       setStatusText('Preparing download...');
       
       const data = await ffmpeg.readFile('output.mp4');
-      const blob = new Blob([data], { type: 'video/mp4' });
+      const blob = new Blob([data.buffer], { type: 'video/mp4' });
 
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
