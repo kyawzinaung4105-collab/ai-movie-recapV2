@@ -46,6 +46,7 @@ export function VideoExporter({
     }).join('\n');
   };
 
+  // Load FFmpeg script safely via standard script tag injection
   const loadFFmpegScript = (): Promise<any> => {
     return new Promise((resolve, reject) => {
       if ((window as any).FFmpegWASM) {
@@ -54,9 +55,8 @@ export function VideoExporter({
       }
 
       const script = document.createElement('script');
-      // Using alternative CDN (cdnjs / jsDelivr) which handles CORS better for workers, 
-      // or loading core UMD bundle directly
       script.src = 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js';
+      script.crossOrigin = 'anonymous';
       script.async = true;
       script.onload = () => {
         resolve((window as any).FFmpegWASM);
@@ -86,9 +86,9 @@ export function VideoExporter({
         }
       });
 
-      // Use jsDelivr CDN URLs for core and wasm to bypass CORS worker issues
       const baseURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd';
       
+      // Load core and wasm with explicit configuration to prevent worker cross-origin fetch failures
       await ffmpeg.load({
         coreURL: `${baseURL}/ffmpeg-core.js`,
         wasmURL: `${baseURL}/ffmpeg-core.wasm`,
