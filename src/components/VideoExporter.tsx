@@ -1,8 +1,6 @@
 import { useState } from 'react';
 import { Download, Loader2, AlertCircle, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { FFmpeg } from '@ffmpeg/ffmpeg';
-import { toBlobURL } from '@ffmpeg/util';
 
 interface SubtitleItem {
   start: number;
@@ -48,16 +46,47 @@ export function VideoExporter({
     }).join('\n');
   };
 
+  // လိုအပ်တဲ့ External Script တွေကို တိုက်ရိုက်ခေါ်မယ့် Function
+  const loadScript = (src: string): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      if (document.querySelector(`script[src="${src}"]`)) {
+        resolve();
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = src;
+      script.async = true;
+      script.crossOrigin = 'anonymous';
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error(`Failed to load script: ${src}`));
+      document.head.appendChild(script);
+    });
+  };
+
   const handleFFmpegExport = async () => {
     setError('');
     setDone(false);
     setExporting(true);
-    setStatusText('Loading FFmpeg engine...');
+    setStatusText('Downloading FFmpeg core from internet...');
 
     try {
+      // 1. Load FFmpeg scripts directly from CDN (No npm needed!)
+      await loadScript('https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js');
+      await loadScript('https://unpkg.com/@ffmpeg/util@0.12.1/dist/umd/index.js');
+
+      const FFmpegModule = (window as any).FFmpegWASM;
+      const FFmpegUtil = (window as any).FFmpegUtil;
+
+      if (!FFmpegModule || !FFmpegUtil) {
+        throw new Error('FFmpeg engine failed to load.');
+      }
+
+      const { FFmpeg } = FFmpegModule;
+      const { fetchFile, toBlobURL } = FFmpegUtil;
+
       const ffmpeg = new FFmpeg();
 
-      ffmpeg.on('log', ({ message }) => {
+      ffmpeg.on('log', ({ message }: { message: string }) => {
         console.log(message);
         if (message.includes('time=')) {
           setStatusText(`Processing... (${message})`);
@@ -66,7 +95,7 @@ export function VideoExporter({
 
       const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
       
-      // Load core using toBlobURL to bypass all cross-origin worker fetch blocks
+      // 2. Load WebAssembly and bypass CORS errors safely using toBlobURL
       await ffmpeg.load({
         coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
         wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
@@ -86,22 +115,21 @@ export function VideoExporter({
 
       setStatusText('Downloading media into memory...');
       
-      const videoRes = await fetch(targetVideoUrl);
-      const videoBuffer = await videoRes.arrayBuffer();
-      await ffmpeg.writeFile('input.mp4', new Uint8Array(videoBuffer));
+      // 3. Write video file
+      await ffmpeg.writeFile('input.mp4', await fetchFile(targetVideoUrl));
 
+      // 4. Write audio file
       let hasAudio = false;
       if (audioTrackUrl) {
         try {
-          const audioRes = await fetch(audioTrackUrl);
-          const audioBuffer = await audioRes.arrayBuffer();
-          await ffmpeg.writeFile('audio.mp3', new Uint8Array(audioBuffer));
+          await ffmpeg.writeFile('audio.mp3', await fetchFile(audioTrackUrl));
           hasAudio = true;
         } catch (e) {
           console.warn('Failed to load custom audio track:', e);
         }
       }
 
+      // 5. Write subtitles
       let hasSubtitles = false;
       if (subtitles.length > 0) {
         const srtContent = generateSrtContent(subtitles);
@@ -155,7 +183,7 @@ export function VideoExporter({
       setStatusText('Preparing download...');
       
       const data = await ffmpeg.readFile('output.mp4');
-      const blob = new Blob([data.buffer], { type: 'video/mp4' });
+      const blob = new Blob([data], { type: 'video/mp4' });
 
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
