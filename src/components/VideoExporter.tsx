@@ -46,7 +46,6 @@ export function VideoExporter({
     }).join('\n');
   };
 
-  // jsDelivr CDN ကို အသုံးပြု၍ Script တိုက်ရိုက်ခေါ်ခြင်း
   const loadScript = (src: string): Promise<void> => {
     return new Promise((resolve, reject) => {
       if (document.querySelector(`script[src="${src}"]`)) {
@@ -67,10 +66,9 @@ export function VideoExporter({
     setError('');
     setDone(false);
     setExporting(true);
-    setStatusText('Loading FFmpeg via jsDelivr CDN...');
+    setStatusText('Loading FFmpeg engine...');
 
     try {
-      // 1. Load FFmpeg scripts from jsDelivr CDN (Bypasses Unpkg worker CORS blocks)
       await loadScript('https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js');
       await loadScript('https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/umd/index.js');
 
@@ -93,12 +91,14 @@ export function VideoExporter({
         }
       });
 
-      const baseURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd';
-      
-      // 2. Load core and wasm via jsDelivr
+      // Single-thread core URLs (Bypasses Web Worker restrictions entirely)
+      const baseURL = 'https://unpkg.com/@ffmpeg/core-mt@0.12.6/dist/umd'; // or standard single thread core
+      const singleCoreURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js';
+      const singleWasmURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.wasm';
+
       await ffmpeg.load({
-        coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
-        wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+        coreURL: await toBlobURL(singleCoreURL, 'text/javascript'),
+        wasmURL: await toBlobURL(singleWasmURL, 'application/wasm'),
       });
 
       let targetVideoUrl = videoBlobUrl;
