@@ -46,7 +46,7 @@ export function VideoExporter({
     }).join('\n');
   };
 
-  // လိုအပ်တဲ့ External Script တွေကို တိုက်ရိုက်ခေါ်မယ့် Function
+  // jsDelivr CDN ကို အသုံးပြု၍ Script တိုက်ရိုက်ခေါ်ခြင်း
   const loadScript = (src: string): Promise<void> => {
     return new Promise((resolve, reject) => {
       if (document.querySelector(`script[src="${src}"]`)) {
@@ -67,12 +67,12 @@ export function VideoExporter({
     setError('');
     setDone(false);
     setExporting(true);
-    setStatusText('Downloading FFmpeg core from internet...');
+    setStatusText('Loading FFmpeg via jsDelivr CDN...');
 
     try {
-      // 1. Load FFmpeg scripts directly from CDN (No npm needed!)
-      await loadScript('https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js');
-      await loadScript('https://unpkg.com/@ffmpeg/util@0.12.1/dist/umd/index.js');
+      // 1. Load FFmpeg scripts from jsDelivr CDN (Bypasses Unpkg worker CORS blocks)
+      await loadScript('https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js');
+      await loadScript('https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/umd/index.js');
 
       const FFmpegModule = (window as any).FFmpegWASM;
       const FFmpegUtil = (window as any).FFmpegUtil;
@@ -93,9 +93,9 @@ export function VideoExporter({
         }
       });
 
-      const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
+      const baseURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd';
       
-      // 2. Load WebAssembly and bypass CORS errors safely using toBlobURL
+      // 2. Load core and wasm via jsDelivr
       await ffmpeg.load({
         coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
         wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
@@ -115,10 +115,8 @@ export function VideoExporter({
 
       setStatusText('Downloading media into memory...');
       
-      // 3. Write video file
       await ffmpeg.writeFile('input.mp4', await fetchFile(targetVideoUrl));
 
-      // 4. Write audio file
       let hasAudio = false;
       if (audioTrackUrl) {
         try {
@@ -129,7 +127,6 @@ export function VideoExporter({
         }
       }
 
-      // 5. Write subtitles
       let hasSubtitles = false;
       if (subtitles.length > 0) {
         const srtContent = generateSrtContent(subtitles);
