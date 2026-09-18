@@ -32,20 +32,20 @@ export function VideoExporter({
 
   const safeTitle = (movieTitle && movieTitle.trim() !== '') ? movieTitle : 'ai-movie-recap';
 
-  const formatSrtTime = (seconds: number) => {
-    const hrs = Math.floor(seconds / 3600);
-    const mins = Math.floor((seconds % 3600) / 60);
-    const secs = Math.floor(seconds % 60);
-    const millis = Math.floor((seconds % 1) * 1000);
-    return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')},${millis.toString().padStart(3, '0')}`;
-  };
-
-  const generateSrtContent = (subs: SubtitleItem[]) => {
-    return subs.map((sub, index) => {
-      const startStr = formatSrtTime(sub.start);
-      const endStr = formatSrtTime(sub.end);
-      return `${index + 1}\n${startStr} --> ${endStr}\n${sub.text}\n`;
-    }).join('\n');
+  const generateAssContent = (subs: SubtitleItem[]) => {
+    const assTime = (seconds: number) => {
+      const hrs = Math.floor(seconds / 3600);
+      const mins = Math.floor((seconds % 3600) / 60);
+      const secs = Math.floor(seconds % 60);
+      const centis = Math.floor((seconds % 1) * 100);
+      return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${centis.toString().padStart(2, '0')}`;
+    };
+    const escapeAssText = (text: string) => text.replace(/\\/g, '\\\\').replace(/[{}]/g, '');
+    const header = `[Script Info]\nScriptType: v4.00+\nPlayResX: 1280\nPlayResY: 720\n\n[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\nStyle: Default,Noto Sans Myanmar,28,&H00FFFFFF,&H00FFFFFF,&H00000000,&H99000000,0,0,1,2,1,2,40,40,35,1\n\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n`;
+    const events = subs.map((sub) => (
+      `Dialogue: 0,${assTime(sub.start)},${assTime(sub.end)},Default,,0,0,0,,${escapeAssText(sub.text)}`
+    )).join('\n');
+    return header + events;
   };
 
   const handleFFmpegExport = async () => {
@@ -100,8 +100,8 @@ export function VideoExporter({
 
       let hasSubtitles = false;
       if (subtitles.length > 0) {
-        const srtContent = generateSrtContent(subtitles);
-        await ffmpeg.writeFile('subtitles.srt', new TextEncoder().encode(srtContent));
+        const assContent = generateAssContent(subtitles);
+        await ffmpeg.writeFile('subtitles.ass', new TextEncoder().encode(assContent));
         await ffmpeg.writeFile(
           'NotoSansMyanmar-Regular.ttf',
           await fetchFile(`${import.meta.env.BASE_URL}fonts/NotoSansMyanmar-Regular.ttf`),
@@ -112,7 +112,7 @@ export function VideoExporter({
       setStatusText('Merging audio, video & subtitles...');
 
       let args: string[] = [];
-      const subtitleFilter = 'subtitles=subtitles.srt:charenc=UTF-8:fontsdir=.';
+      const subtitleFilter = 'ass=subtitles.ass:fontsdir=.';
 
       if (hasAudio && hasSubtitles) {
         args = [
