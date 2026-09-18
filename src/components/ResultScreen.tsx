@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { RotateCcw } from 'lucide-react';
 import { useRecap } from '@/context/RecapContext';
 import { MovieTitleEditor } from '@/components/MovieTitleEditor';
@@ -27,6 +28,13 @@ export function ResultScreen() {
     setLogoSettings,
     resetAll,
   } = useRecap();
+
+  useEffect(() => {
+    if (!videoSource || movieTitle.trim()) return;
+    const generatedTitle = generationResult?.movieTitle?.trim();
+    const fileTitle = videoSource.fileName.replace(/\.[^/.]+$/, '').replace(/[_-]+/g, ' ').trim();
+    setMovieTitle(generatedTitle && generatedTitle !== 'Unknown Video' ? generatedTitle : (fileTitle || 'AI Movie Recap'));
+  }, [movieTitle, generationResult?.movieTitle, videoSource, setMovieTitle]);
 
   if (!videoSource) return null;
 

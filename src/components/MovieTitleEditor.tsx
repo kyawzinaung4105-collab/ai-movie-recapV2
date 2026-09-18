@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pencil, Check, X, Film, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
@@ -11,6 +11,10 @@ interface MovieTitleEditorProps {
 export function MovieTitleEditor({ title, titleConfident, onChange }: MovieTitleEditorProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState(title);
+
+  useEffect(() => {
+    if (!isEditing) setDraft(title);
+  }, [title, isEditing]);
 
   const handleSave = () => {
     onChange(draft.trim() || 'Untitled');
