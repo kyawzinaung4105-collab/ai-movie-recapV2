@@ -146,7 +146,10 @@ export function VideoExporter({
         args = ['-i', 'input.mp4', '-c', 'copy', 'output.mp4'];
       }
 
-      await ffmpeg.exec(args);
+      const exitCode = await ffmpeg.exec(args);
+      if (exitCode !== 0) {
+        throw new Error(`FFmpeg could not create the output video (exit code ${exitCode}).`);
+      }
 
       setStatusText('Preparing download...');
       
@@ -163,9 +166,11 @@ export function VideoExporter({
       URL.revokeObjectURL(url);
 
       setDone(true);
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message || 'Export failed. Please check console.');
+      ffmpeg.terminate();
+    } catch (err: unknown) {
+      console.error('Video export failed:', err);
+      const message = err instanceof Error ? err.message : String(err);
+      setError(message || 'Video export failed. Please try again.');
     } finally {
       setExporting(false);
       setStatusText('');

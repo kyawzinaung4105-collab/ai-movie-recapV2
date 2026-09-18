@@ -29,6 +29,11 @@ export function ResultScreen() {
   if (!videoSource) return null;
 
   const isCustomMode = !generationResult;
+  const exportVideoUrl = videoSource.isDirectFile ? videoSource.objectUrl : undefined;
+  const exportAudioUrl = customAudioUrl || generationResult?.narrationUrl;
+  const exportSubtitles = customCues.length > 0
+    ? customCues
+    : (generationResult?.cues || captionSettings.cues);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -85,7 +90,18 @@ export function ResultScreen() {
         currentCues={customCues}
       />
 
-      <VideoExporter movieTitle={movieTitle} />
+      <VideoExporter
+        movieTitle={movieTitle}
+        videoBlobUrl={exportVideoUrl}
+        audioTrackUrl={exportAudioUrl}
+        subtitles={exportSubtitles}
+        disabled={!exportVideoUrl}
+      />
+      {!exportVideoUrl && (
+        <p className="text-sm text-slate-500">
+          MP4 export is available for uploaded video files. Embedded video links cannot be downloaded by the browser.
+        </p>
+      )}
     </div>
   );
 }
