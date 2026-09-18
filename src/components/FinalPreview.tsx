@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { Volume2, VolumeX, Play, Pause } from 'lucide-react';
 import { getActiveCaption } from '@/lib/captions';
-import type { BlurSettings, CaptionCue, CaptionSettings, VideoSource, GenerationResult } from '@/types';
+import type { BlurSettings, CaptionCue, CaptionSettings, VideoSource, GenerationResult, LogoSettings } from '@/types';
 
 interface FinalPreviewProps {
   videoSource: VideoSource;
@@ -11,9 +11,12 @@ interface FinalPreviewProps {
   generationResult?: GenerationResult | null;
   customAudioUrl?: string;
   customCues?: CaptionCue[];
+  logoSettings: LogoSettings;
+  onCaptionChange: (settings: CaptionSettings) => void;
+  onLogoChange: (settings: LogoSettings) => void;
 }
 
-export function FinalPreview({ videoSource, blurSettings, captionSettings, movieTitle, generationResult, customAudioUrl, customCues }: FinalPreviewProps) {
+export function FinalPreview({ videoSource, blurSettings, captionSettings, movieTitle, generationResult, customAudioUrl, customCues, logoSettings, onCaptionChange, onLogoChange }: FinalPreviewProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -108,19 +111,22 @@ export function FinalPreview({ videoSource, blurSettings, captionSettings, movie
     setAudioMuted(audio.muted);
   };
 
-  const captionPosClass =
-    captionSettings.style.position === 'top'
-      ? 'top-4'
-      : captionSettings.style.position === 'center'
-      ? 'top-1/2 -translate-y-1/2'
-      : 'bottom-4';
-
   const captionAlignClass =
     captionSettings.style.alignment === 'left'
       ? 'text-left'
       : captionSettings.style.alignment === 'right'
       ? 'text-right'
       : 'text-center';
+
+  const dragOverlay = (event: React.PointerEvent<HTMLElement>, kind: 'caption' | 'logo') => {
+    if (event.type === 'pointermove' && event.buttons === 0) return;
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const x = Math.max(3, Math.min(97, ((event.clientX - rect.left) / rect.width) * 100));
+    const y = Math.max(3, Math.min(97, ((event.clientY - rect.top) / rect.height) * 100));
+    if (kind === 'caption') onCaptionChange({ ...captionSettings, style: { ...captionSettings.style, x, y } });
+    else onLogoChange({ ...logoSettings, x, y });
+  };
 
   const renderVideo = useCallback(() => {
     if (videoSource.isDirectFile) {
@@ -184,17 +190,30 @@ export function FinalPreview({ videoSource, blurSettings, captionSettings, movie
         )}
 
         {/* Caption overlay */}
-        {captionSettings.enabled && activeCaption && (
-          <div className={`absolute left-0 right-0 px-4 ${captionPosClass} pointer-events-none`}>
+        {(captionSettings.enabled || effectiveCues.length > 0) && activeCaption && (
+          <div className="absolute inset-0 pointer-events-none">
             <p
-              className={`${captionAlignClass} ${captionSettings.style.background ? 'bg-black/70 px-3 py-1 rounded' : ''} ${
+              onPointerDown={(event) => dragOverlay(event, 'caption')}
+              onPointerMove={(event) => dragOverlay(event, 'caption')}
+              className={`absolute max-w-[92%] cursor-move pointer-events-auto px-3 py-1 ${captionAlignClass} ${captionSettings.style.template === 'box' || captionSettings.style.background ? 'rounded bg-black/70' : ''} ${captionSettings.style.template === 'highlight' ? 'rounded bg-amber-300/90' : ''} ${captionSettings.style.template === 'minimal' ? 'font-normal' : 'font-semibold'} ${
                     captionSettings.style.outline ? '[text-shadow:-1px_-1px_0_#000,1px_-1px_0_#000,-1px_1px_0_#000,1px_1px_0_#000]' : ''
-                  } text-white font-semibold ${captionSettings.style.fontSize >= 32 ? 'text-2xl' : 'text-lg'} ${captionSettings.style.fontSize <= 18 ? 'text-sm' : ''}`}
-              style={{ fontSize: `${captionSettings.style.fontSize}px` }}
+                  }`}
+              style={{ left: `${captionSettings.style.x}%`, top: `${captionSettings.style.y}%`, transform: 'translate(-50%, -50%)', fontSize: `${captionSettings.style.fontSize}px`, color: captionSettings.style.color }}
             >
               {activeCaption.text}
             </p>
           </div>
+        )}
+
+        {logoSettings.url && (
+          <img
+            src={logoSettings.url}
+            alt="Channel logo"
+            onPointerDown={(event) => dragOverlay(event, 'logo')}
+            onPointerMove={(event) => dragOverlay(event, 'logo')}
+            className="absolute cursor-move object-contain"
+            style={{ left: `${logoSettings.x}%`, top: `${logoSettings.y}%`, width: `${logoSettings.size}%`, transform: 'translate(-50%, -50%)', opacity: logoSettings.opacity / 100 }}
+          />
         )}
 
         {/* Title overlay */}

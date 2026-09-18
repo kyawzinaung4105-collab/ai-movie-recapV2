@@ -23,6 +23,8 @@ export function ResultScreen() {
     setCustomAudioUrl,
     customCues,
     setCustomCues,
+    logoSettings,
+    setLogoSettings,
     resetAll,
   } = useRecap();
 
@@ -68,6 +70,9 @@ export function ResultScreen() {
         generationResult={generationResult}
         customAudioUrl={customAudioUrl}
         customCues={customCues}
+        logoSettings={logoSettings}
+        onCaptionChange={setCaptionSettings}
+        onLogoChange={setLogoSettings}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -80,6 +85,8 @@ export function ResultScreen() {
           settings={captionSettings}
           onChange={setCaptionSettings}
           language={language}
+          logoSettings={logoSettings}
+          onLogoChange={setLogoSettings}
         />
       </div>
 
@@ -95,6 +102,8 @@ export function ResultScreen() {
         videoBlobUrl={exportVideoUrl}
         audioTrackUrl={exportAudioUrl}
         subtitles={exportSubtitles}
+        captionStyle={captionSettings.style}
+        logoSettings={logoSettings}
         disabled={!exportVideoUrl}
       />
       {!exportVideoUrl && (

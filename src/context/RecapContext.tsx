@@ -12,6 +12,7 @@ import type {
   GenerationResult,
   GenerationStage,
   Language,
+  LogoSettings,
   StepId,
   VideoSource,
 } from '@/types';
@@ -51,6 +52,9 @@ interface RecapContextValue {
   customCues: CaptionCue[];
   setCustomCues: (cues: CaptionCue[]) => void;
 
+  logoSettings: LogoSettings;
+  setLogoSettings: (settings: LogoSettings) => void;
+
   resetAll: () => void;
 }
 
@@ -65,9 +69,11 @@ const DEFAULT_BLUR: BlurSettings = {
 
 const DEFAULT_CAPTIONS: CaptionSettings = {
   enabled: false,
-  style: getDefaultCaptionStyle(),
+  style: { ...getDefaultCaptionStyle(), x: 50, y: 82, color: '#ffffff', template: 'classic' },
   cues: [],
 };
+
+const DEFAULT_LOGO: LogoSettings = { x: 88, y: 8, size: 12, opacity: 100 };
 
 const RecapContext = createContext<RecapContextValue | null>(null);
 
@@ -83,6 +89,7 @@ export function RecapProvider({ children }: { children: ReactNode }) {
   const [captionSettings, setCaptionSettings] = useState<CaptionSettings>(DEFAULT_CAPTIONS);
   const [customAudioUrl, setCustomAudioUrl] = useState<string | undefined>(undefined);
   const [customCues, setCustomCues] = useState<CaptionCue[]>([]);
+  const [logoSettings, setLogoSettings] = useState<LogoSettings>(DEFAULT_LOGO);
 
   const resetAll = useCallback(() => {
     if (videoSource?.objectUrl) URL.revokeObjectURL(videoSource.objectUrl);
@@ -98,7 +105,9 @@ export function RecapProvider({ children }: { children: ReactNode }) {
     if (customAudioUrl) URL.revokeObjectURL(customAudioUrl);
     setCustomAudioUrl(undefined);
     setCustomCues([]);
-  }, [videoSource, customAudioUrl]);
+    if (logoSettings.url) URL.revokeObjectURL(logoSettings.url);
+    setLogoSettings(DEFAULT_LOGO);
+  }, [videoSource, customAudioUrl, logoSettings.url]);
 
   return (
     <RecapContext.Provider
@@ -125,6 +134,8 @@ export function RecapProvider({ children }: { children: ReactNode }) {
         setCustomAudioUrl,
         customCues,
         setCustomCues,
+        logoSettings,
+        setLogoSettings,
         resetAll,
       }}
     >

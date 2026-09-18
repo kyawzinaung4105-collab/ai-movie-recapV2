@@ -45,9 +45,21 @@ export interface BlurSettings {
 export interface CaptionStyle {
   fontSize: number;
   position: 'top' | 'center' | 'bottom';
+  x: number;
+  y: number;
+  color: string;
+  template: 'classic' | 'box' | 'highlight' | 'minimal';
   alignment: 'left' | 'center' | 'right';
   outline: boolean;
   background: boolean;
+}
+
+export interface LogoSettings {
+  url?: string;
+  x: number;
+  y: number;
+  size: number;
+  opacity: number;
 }
 
 export interface CaptionCue {

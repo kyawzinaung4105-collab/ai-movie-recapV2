@@ -3,6 +3,10 @@ import type { CaptionCue, CaptionStyle } from '@/types';
 export const DEFAULT_CAPTION_STYLE: CaptionStyle = {
   fontSize: 24,
   position: 'bottom',
+  x: 50,
+  y: 82,
+  color: '#ffffff',
+  template: 'classic',
   alignment: 'center',
   outline: true,
   background: false,

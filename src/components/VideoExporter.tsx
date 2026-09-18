@@ -3,6 +3,7 @@ import { Download, Loader2, AlertCircle, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile } from '@ffmpeg/util';
+import type { CaptionStyle, LogoSettings } from '@/types';
 
 interface SubtitleItem {
   start: number;
@@ -16,6 +17,8 @@ interface VideoExporterProps {
   videoBlobUrl?: string;
   audioTrackUrl?: string;
   subtitles?: SubtitleItem[];
+  captionStyle?: CaptionStyle;
+  logoSettings?: LogoSettings;
 }
 
 export function VideoExporter({ 
@@ -23,7 +26,9 @@ export function VideoExporter({
   disabled, 
   videoBlobUrl, 
   audioTrackUrl, 
-  subtitles = [] 
+  subtitles = [],
+  captionStyle,
+  logoSettings,
 }: VideoExporterProps) {
   const [exporting, setExporting] = useState(false);
   const [statusText, setStatusText] = useState('');
@@ -31,6 +36,11 @@ export function VideoExporter({
   const [done, setDone] = useState(false);
 
   const safeTitle = (movieTitle && movieTitle.trim() !== '') ? movieTitle : 'ai-movie-recap';
+
+  const assColor = (hex: string) => {
+    const value = hex.replace('#', '').padStart(6, '0');
+    return `&H00${value.slice(4, 6)}${value.slice(2, 4)}${value.slice(0, 2)}`;
+  };
 
   const generateAssContent = (subs: SubtitleItem[]) => {
     const assTime = (seconds: number) => {
@@ -41,9 +51,13 @@ export function VideoExporter({
       return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${centis.toString().padStart(2, '0')}`;
     };
     const escapeAssText = (text: string) => text.replace(/\\/g, '\\\\').replace(/[{}]/g, '');
-    const header = `[Script Info]\nScriptType: v4.00+\nPlayResX: 1280\nPlayResY: 720\n\n[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\nStyle: Default,Noto Sans Myanmar,28,&H00FFFFFF,&H00FFFFFF,&H00000000,&H99000000,0,0,1,2,1,2,40,40,35,1\n\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n`;
+    const style = captionStyle;
+    const color = assColor(style?.color || '#ffffff');
+    const outline = style?.outline === false ? 0 : 2;
+    const back = style?.background || style?.template === 'box' ? '&H99000000' : '&H00000000';
+    const header = `[Script Info]\nScriptType: v4.00+\nPlayResX: 1280\nPlayResY: 720\n\n[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\nStyle: Default,Noto Sans Myanmar,${style?.fontSize || 24},${color},${color},&H00000000,${back},0,0,1,${outline},1,2,40,40,35,1\n\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n`;
     const events = subs.map((sub) => (
-      `Dialogue: 0,${assTime(sub.start)},${assTime(sub.end)},Default,,0,0,0,,${escapeAssText(sub.text)}`
+      `Dialogue: 0,${assTime(sub.start)},${assTime(sub.end)},Default,,0,0,0,,{\\pos(${Math.round(((style?.x || 50) / 100) * 1280)},${Math.round(((style?.y || 82) / 100) * 720)})}${escapeAssText(sub.text)}`
     )).join('\n');
     return header + events;
   };
@@ -108,17 +122,28 @@ export function VideoExporter({
         );
         hasSubtitles = true;
       }
+      let hasLogo = false;
+      if (logoSettings?.url) {
+        await ffmpeg.writeFile('logo.png', await fetchFile(logoSettings.url));
+        hasLogo = true;
+      }
 
       setStatusText('Merging audio, video & subtitles...');
 
       let args: string[] = [];
       const subtitleFilter = 'ass=subtitles.ass:fontsdir=.';
+      const logoX = Math.round(((logoSettings?.x || 88) / 100) * 1280);
+      const logoY = Math.round(((logoSettings?.y || 8) / 100) * 720);
+      const logoWidth = Math.round(((logoSettings?.size || 12) / 100) * 1280);
 
       if (hasAudio && hasSubtitles) {
         args = [
           '-i', 'input.mp4',
           '-i', 'audio.mp3',
-          '-filter_complex', `[0:v]${subtitleFilter}[v]`,
+          ...(hasLogo ? ['-i', 'logo.png'] : []),
+          '-filter_complex', hasLogo
+            ? `[0:v]${subtitleFilter}[captioned];[2:v]scale=${logoWidth}:-1,format=rgba,colorchannelmixer=aa=${(logoSettings?.opacity || 100) / 100}[logo];[captioned][logo]overlay=${logoX}:${logoY}[v]`
+            : `[0:v]${subtitleFilter}[v]`,
           '-map', '[v]',
           '-map', '1:a',
           '-c:v', 'libx264',
@@ -131,7 +156,7 @@ export function VideoExporter({
         args = [
           '-i', 'input.mp4',
           '-i', 'audio.mp3',
-          '-map', '0:v',
+          ...(hasLogo ? ['-i', 'logo.png', '-filter_complex', `[0:v][2:v]overlay=${logoX}:${logoY}[v]`, '-map', '[v]'] : ['-map', '0:v']),
           '-map', '1:a',
           '-c:v', 'copy',
           '-c:a', 'aac',
@@ -141,14 +166,16 @@ export function VideoExporter({
       } else if (!hasAudio && hasSubtitles) {
         args = [
           '-i', 'input.mp4',
-          '-vf', subtitleFilter,
+          ...(hasLogo ? ['-i', 'logo.png', '-filter_complex', `[0:v]${subtitleFilter}[captioned];[1:v]scale=${logoWidth}:-1,format=rgba,colorchannelmixer=aa=${(logoSettings?.opacity || 100) / 100}[logo];[captioned][logo]overlay=${logoX}:${logoY}[v]`, '-map', '[v]'] : ['-vf', subtitleFilter]),
           '-c:v', 'libx264',
           '-preset', 'ultrafast',
           '-c:a', 'copy',
           'output.mp4'
         ];
       } else {
-        args = ['-i', 'input.mp4', '-c', 'copy', 'output.mp4'];
+        args = hasLogo
+          ? ['-i', 'input.mp4', '-i', 'logo.png', '-filter_complex', `[0:v][1:v]overlay=${logoX}:${logoY}[v]`, '-map', '[v]', '-map', '0:a?', '-c:v', 'libx264', '-preset', 'ultrafast', 'output.mp4']
+          : ['-i', 'input.mp4', '-c', 'copy', 'output.mp4'];
       }
 
       const exitCode = await ffmpeg.exec(args);
