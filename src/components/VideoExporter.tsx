@@ -34,6 +34,7 @@ export function VideoExporter({
   const [statusText, setStatusText] = useState('');
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
+  const [outputSize, setOutputSize] = useState<'original' | 'youtube' | 'tiktok'>('original');
 
   const safeTitle = (movieTitle && movieTitle.trim() !== '') ? movieTitle : 'ai-movie-recap';
 
@@ -178,14 +179,32 @@ export function VideoExporter({
           : ['-i', 'input.mp4', '-c', 'copy', 'output.mp4'];
       }
 
-      const exitCode = await ffmpeg.exec(args);
+      let exitCode = await ffmpeg.exec(args);
       if (exitCode !== 0) {
         throw new Error(`FFmpeg could not create the output video (exit code ${exitCode}).`);
       }
 
+      let outputFile = 'output.mp4';
+      if (outputSize !== 'original') {
+        const dimensions = outputSize === 'youtube' ? '1280:720' : '720:1280';
+        setStatusText(`Preparing ${outputSize === 'youtube' ? 'YouTube' : 'TikTok'} video...`);
+        exitCode = await ffmpeg.exec([
+          '-i', 'output.mp4',
+          '-vf', `scale=${dimensions}:force_original_aspect_ratio=decrease,pad=${dimensions}:(ow-iw)/2:(oh-ih)/2:color=black`,
+          '-c:v', 'libx264',
+          '-preset', 'ultrafast',
+          '-c:a', 'copy',
+          'resized.mp4',
+        ]);
+        if (exitCode !== 0) {
+          throw new Error(`Could not resize video for ${outputSize === 'youtube' ? 'YouTube' : 'TikTok'} (exit code ${exitCode}).`);
+        }
+        outputFile = 'resized.mp4';
+      }
+
       setStatusText('Preparing download...');
       
-      const data = await ffmpeg.readFile('output.mp4');
+      const data = await ffmpeg.readFile(outputFile);
       const blob = new Blob([data], { type: 'video/mp4' });
 
       const url = URL.createObjectURL(blob);
@@ -235,6 +254,20 @@ export function VideoExporter({
           <span>Export completed successfully in MP4 format with audio & subtitles for "{safeTitle}".</span>
         </div>
       )}
+
+      <label className="block max-w-xs space-y-1">
+        <span className="text-xs font-medium text-slate-500">Video size</span>
+        <select
+          value={outputSize}
+          onChange={(event) => setOutputSize(event.target.value as 'original' | 'youtube' | 'tiktok')}
+          disabled={exporting}
+          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"
+        >
+          <option value="original">Original size</option>
+          <option value="youtube">YouTube — 16:9 (1280×720)</option>
+          <option value="tiktok">TikTok — 9:16 (720×1280)</option>
+        </select>
+      </label>
 
       <Button
         size="lg"
