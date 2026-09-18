@@ -101,19 +101,24 @@ export function VideoExporter({
       let hasSubtitles = false;
       if (subtitles.length > 0) {
         const srtContent = generateSrtContent(subtitles);
-        await ffmpeg.writeFile('subtitles.srt', srtContent);
+        await ffmpeg.writeFile('subtitles.srt', new TextEncoder().encode(srtContent));
+        await ffmpeg.writeFile(
+          'NotoSansMyanmar-Regular.ttf',
+          await fetchFile(`${import.meta.env.BASE_URL}fonts/NotoSansMyanmar-Regular.ttf`),
+        );
         hasSubtitles = true;
       }
 
       setStatusText('Merging audio, video & subtitles...');
 
       let args: string[] = [];
+      const subtitleFilter = 'subtitles=subtitles.srt:charenc=UTF-8:fontsdir=.';
 
       if (hasAudio && hasSubtitles) {
         args = [
           '-i', 'input.mp4',
           '-i', 'audio.mp3',
-          '-filter_complex', '[0:v]subtitles=subtitles.srt[v]',
+          '-filter_complex', `[0:v]${subtitleFilter}[v]`,
           '-map', '[v]',
           '-map', '1:a',
           '-c:v', 'libx264',
@@ -136,7 +141,7 @@ export function VideoExporter({
       } else if (!hasAudio && hasSubtitles) {
         args = [
           '-i', 'input.mp4',
-          '-vf', 'subtitles=subtitles.srt',
+          '-vf', subtitleFilter,
           '-c:v', 'libx264',
           '-preset', 'ultrafast',
           '-c:a', 'copy',
