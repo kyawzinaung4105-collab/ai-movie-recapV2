@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Download, Loader2, AlertCircle, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { FFmpeg } from '@ffmpeg/ffmpeg';
+import { fetchFile } from '@ffmpeg/util';
 
 interface SubtitleItem {
   start: number;
@@ -46,22 +48,6 @@ export function VideoExporter({
     }).join('\n');
   };
 
-  const loadScript = (src: string): Promise<void> => {
-    return new Promise((resolve, reject) => {
-      if (document.querySelector(`script[src="${src}"]`)) {
-        resolve();
-        return;
-      }
-      const script = document.createElement('script');
-      script.src = src;
-      script.async = true;
-      script.crossOrigin = 'anonymous';
-      script.onload = () => resolve();
-      script.onerror = () => reject(new Error(`Failed to load script: ${src}`));
-      document.head.appendChild(script);
-    });
-  };
-
   const handleFFmpegExport = async () => {
     setError('');
     setDone(false);
@@ -69,19 +55,6 @@ export function VideoExporter({
     setStatusText('Loading FFmpeg engine...');
 
     try {
-      await loadScript('https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js');
-      await loadScript('https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/umd/index.js');
-
-      const FFmpegModule = (window as any).FFmpegWASM;
-      const FFmpegUtil = (window as any).FFmpegUtil;
-
-      if (!FFmpegModule || !FFmpegUtil) {
-        throw new Error('FFmpeg engine failed to load.');
-      }
-
-      const { FFmpeg } = FFmpegModule;
-      const { fetchFile, toBlobURL } = FFmpegUtil;
-
       const ffmpeg = new FFmpeg();
 
       ffmpeg.on('log', ({ message }: { message: string }) => {
@@ -91,14 +64,12 @@ export function VideoExporter({
         }
       });
 
-      // Single-thread core URLs (Bypasses Web Worker restrictions entirely)
-      const baseURL = 'https://unpkg.com/@ffmpeg/core-mt@0.12.6/dist/umd'; // or standard single thread core
-      const singleCoreURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js';
-      const singleWasmURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.wasm';
-
+      // Keep the worker and core on the Vercel origin. A Worker cannot load the
+      // package's CDN chunk from a different origin in production.
+      const corePath = `${import.meta.env.BASE_URL}ffmpeg/ffmpeg-core`;
       await ffmpeg.load({
-        coreURL: await toBlobURL(singleCoreURL, 'text/javascript'),
-        wasmURL: await toBlobURL(singleWasmURL, 'application/wasm'),
+        coreURL: `${corePath}.js`,
+        wasmURL: `${corePath}.wasm`,
       });
 
       let targetVideoUrl = videoBlobUrl;
