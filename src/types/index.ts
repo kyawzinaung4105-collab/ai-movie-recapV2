@@ -26,6 +26,7 @@ export type GenerationStage =
 export interface VideoSource {
   method: InputMethod;
   fileName: string;
+  file?: File;
   platform?: Platform;
   embedUrl?: string;
   objectUrl?: string;

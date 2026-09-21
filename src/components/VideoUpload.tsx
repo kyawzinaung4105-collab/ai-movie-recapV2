@@ -41,10 +41,11 @@ export function VideoUpload({ onVideoSelected }: VideoUploadProps) {
   const handleLoadedMetadata = (e: React.SyntheticEvent<HTMLVideoElement>) => {
     const dur = e.currentTarget.duration;
     setDuration(dur);
-    onVideoSelected({
-      method: 'upload',
-      fileName: selectedFile!.name,
-      objectUrl,
+      onVideoSelected({
+        method: 'upload',
+        fileName: selectedFile!.name,
+        file: selectedFile!,
+        objectUrl,
       duration: dur,
       isDirectFile: true,
     });

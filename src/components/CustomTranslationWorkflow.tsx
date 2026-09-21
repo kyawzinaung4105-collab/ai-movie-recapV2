@@ -7,6 +7,7 @@ import { transcribeVideoWithAssemblyAI } from '@/lib/assemblyAiClient';
 interface CustomTranslationWorkflowProps {
   duration?: number;
   videoUrl?: string;
+  videoFile?: File;
   onTranslationApplied: (cues: CaptionCue[]) => void;
 }
 
@@ -20,7 +21,7 @@ function buildCues(lines: string[], duration?: number): CaptionCue[] {
   }));
 }
 
-export function CustomTranslationWorkflow({ duration, videoUrl, onTranslationApplied }: CustomTranslationWorkflowProps) {
+export function CustomTranslationWorkflow({ duration, videoUrl, videoFile, onTranslationApplied }: CustomTranslationWorkflowProps) {
   const [englishTranscript, setEnglishTranscript] = useState('');
   const [jsonOutput, setJsonOutput] = useState('');
   const [copied, setCopied] = useState(false);
@@ -121,7 +122,7 @@ export function CustomTranslationWorkflow({ duration, videoUrl, onTranslationApp
     setError('');
     setTranscribing(true);
     try {
-      const cues = await transcribeVideoWithAssemblyAI(videoUrl, setTranscriptionStatus);
+      const cues = await transcribeVideoWithAssemblyAI(videoUrl, setTranscriptionStatus, videoFile);
       setSourceCues(cues);
       setEnglishTranscript(cues.map((cue) => cue.text).join('\n'));
       setTranscriptionStatus(`${cues.length} English timestamp segments ရပါပြီ`);

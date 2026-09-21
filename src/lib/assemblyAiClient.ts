@@ -109,13 +109,23 @@ async function transcribeDirectly(videoUrl: string, onStatus?: (message: string)
   throw new Error('AssemblyAI transcription timeout ဖြစ်သွားပါတယ်။');
 }
 
-async function transcribeThroughLocalProxy(videoUrl: string, apiKey: string, onStatus?: (message: string) => void): Promise<CaptionCue[]> {
+async function transcribeThroughLocalProxy(videoUrl: string | undefined, apiKey: string, onStatus?: (message: string) => void, videoFile?: File): Promise<CaptionCue[]> {
   onStatus?.('Online AssemblyAI proxy ကို စမ်းနေပါတယ်...');
-  const media = await fetch(videoUrl);
-  if (!media.ok) throw new Error('Video file ကို online proxy ဆီပို့မရပါ။');
   const form = new FormData();
   form.append('apiKey', apiKey);
-  form.append('video', await media.blob(), 'video.mp4');
+  if (videoFile) {
+    form.append('video', videoFile, videoFile.name);
+  } else {
+    if (!videoUrl) throw new Error('Video source မတွေ့ပါ။ Video ကို ပြန်ရွေးပါ။');
+    let media: Response;
+    try {
+      media = await fetch(videoUrl);
+    } catch {
+      throw new Error('Video file ကို browser မှ ဖတ်မရပါ။ Video ကို ပြန်ရွေးပြီး ထပ်စမ်းပါ။');
+    }
+    if (!media.ok) throw new Error('Video file ကို online proxy ဆီပို့မရပါ။');
+    form.append('video', await media.blob(), 'video.mp4');
+  }
   const onlineProxy = '/api/assemblyai/transcribe';
   const response = await fetch(onlineProxy, { method: 'POST', body: form });
   const payload = await response.json() as { cues?: CaptionCue[]; jobId?: string; error?: string };
@@ -132,11 +142,11 @@ async function transcribeThroughLocalProxy(videoUrl: string, apiKey: string, onS
   throw new Error('Online transcription timeout ဖြစ်သွားပါတယ်။');
 }
 
-export async function transcribeVideoWithAssemblyAI(videoUrl: string, onStatus?: (message: string) => void): Promise<CaptionCue[]> {
+export async function transcribeVideoWithAssemblyAI(videoUrl?: string, onStatus?: (message: string) => void, videoFile?: File): Promise<CaptionCue[]> {
   try {
     const apiKey = loadApiKeys().assemblyAiKey;
     if (!apiKey) throw new Error('AssemblyAI API Key မရှိသေးပါ။ Settings မှာ key ထည့်ပါ။');
-    return await transcribeThroughLocalProxy(videoUrl, apiKey, onStatus);
+    return await transcribeThroughLocalProxy(videoUrl, apiKey, onStatus, videoFile);
   } catch (proxyError) {
     const proxyMessage = proxyError instanceof Error ? proxyError.message : 'AssemblyAI proxy request failed.';
     throw new Error(`AssemblyAI proxy မအောင်မြင်ပါ: ${proxyMessage}`);
