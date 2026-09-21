@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Settings } from 'lucide-react';
+import { Settings, ArrowLeft } from 'lucide-react';
 import { RecapProvider, useRecap } from '@/context/RecapContext';
 import { StepIndicator } from '@/components/StepIndicator';
 import { VideoInput } from '@/components/VideoInput';
@@ -58,14 +58,20 @@ function AppContent() {
         {step === 'input' && inputMethod === 'upload' && (
           <div className="mx-auto max-w-4xl space-y-5">
             <VideoUpload onVideoSelected={handleVideoSelected} />
-            {videoSource && <div className="flex justify-end"><Button size="lg" onClick={() => setStep('recap-select')}>Get Source Text</Button></div>}
+            <div className="flex items-center justify-between border-t border-slate-200 pt-4">
+              <Button variant="ghost" onClick={() => setInputMethod(null)}><ArrowLeft className="h-4 w-4" /> Back</Button>
+              {videoSource && <Button size="lg" onClick={() => setStep('recap-select')}>Get Source Text</Button>}
+            </div>
           </div>
         )}
 
         {step === 'input' && inputMethod === 'link' && (
           <div className="mx-auto max-w-4xl space-y-5">
             <VideoLinkInput onVideoLoaded={handleVideoLoaded} />
-            {videoSource && <div className="flex justify-end"><Button size="lg" onClick={() => setStep('recap-select')}>Get Source Text</Button></div>}
+            <div className="flex items-center justify-between border-t border-slate-200 pt-4">
+              <Button variant="ghost" onClick={() => setInputMethod(null)}><ArrowLeft className="h-4 w-4" /> Back</Button>
+              {videoSource && <Button size="lg" onClick={() => setStep('recap-select')}>Get Source Text</Button>}
+            </div>
           </div>
         )}
 

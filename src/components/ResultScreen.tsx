@@ -15,6 +15,7 @@ import { generateElevenLabsVoiceover } from '@/lib/elevenlabsClient';
 export function ResultScreen() {
   const {
     videoSource,
+    setStep,
     generationResult,
     movieTitle,
     setMovieTitle,
@@ -61,9 +62,10 @@ export function ResultScreen() {
           </h2>
           <p className="mt-1 text-sm text-slate-500">Review your video, Burmese subtitles, logo, and export settings.</p>
         </div>
-        <Button variant="ghost" size="sm" onClick={resetAll}>
-          <RotateCcw className="h-4 w-4" /> Start New
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={() => setStep('voice')}>Back to Voice</Button>
+          <Button variant="ghost" size="sm" onClick={resetAll}><RotateCcw className="h-4 w-4" /> Start New</Button>
+        </div>
       </div>
 
       {isCustomMode && (
