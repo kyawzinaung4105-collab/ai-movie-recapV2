@@ -134,15 +134,11 @@ async function transcribeThroughLocalProxy(videoUrl: string, apiKey: string, onS
 
 export async function transcribeVideoWithAssemblyAI(videoUrl: string, onStatus?: (message: string) => void): Promise<CaptionCue[]> {
   try {
-    return await transcribeDirectly(videoUrl, onStatus);
-  } catch (directError) {
-    try {
-      const apiKey = loadApiKeys().assemblyAiKey;
-      return await transcribeThroughLocalProxy(videoUrl, apiKey, onStatus);
-    } catch (proxyError) {
-      const directMessage = directError instanceof Error ? directError.message : 'AssemblyAI direct request failed.';
-      const proxyMessage = proxyError instanceof Error ? proxyError.message : 'Local proxy is not running.';
-      throw new Error(`${directMessage}\n\nOnline proxy fallback: ${proxyMessage}`);
-    }
+    const apiKey = loadApiKeys().assemblyAiKey;
+    if (!apiKey) throw new Error('AssemblyAI API Key မရှိသေးပါ။ Settings မှာ key ထည့်ပါ။');
+    return await transcribeThroughLocalProxy(videoUrl, apiKey, onStatus);
+  } catch (proxyError) {
+    const proxyMessage = proxyError instanceof Error ? proxyError.message : 'AssemblyAI proxy request failed.';
+    throw new Error(`AssemblyAI proxy မအောင်မြင်ပါ: ${proxyMessage}`);
   }
 }
