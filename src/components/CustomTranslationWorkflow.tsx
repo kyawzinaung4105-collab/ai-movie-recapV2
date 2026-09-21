@@ -34,12 +34,16 @@ export function CustomTranslationWorkflow({ duration, videoUrl, onTranslationApp
   const englishLines = useMemo(() => englishTranscript.split(/\r?\n/).map((line) => line.trim()).filter(Boolean), [englishTranscript]);
   const timestampCues = useMemo(() => sourceCues.length === englishLines.length && englishLines.length > 0 ? sourceCues : buildCues(englishLines, duration), [sourceCues, englishLines, duration]);
   const numberedTranscript = useMemo(() => englishLines.map((line, index) => `[${index + 1}] ${line}`).join('\n'), [englishLines]);
-  const prompt = useMemo(() => `You are a professional football news translator. Translate every numbered English line into natural, accurate Burmese for narration and subtitles. Preserve the exact spoken meaning, names, teams, scores, dates, places, and football terms. Do not summarize, shorten, add facts, guess missing information, or invent anything. Do not merge or split lines. Return ONLY valid JSON in this exact format: {"translations":[{"line":1,"text":"Burmese translation for English line 1"},{"line":2,"text":"Burmese translation for English line 2"}]}. You MUST return exactly one object for every line number from 1 to ${englishLines.length}; do not skip, duplicate, reorder, or invent line numbers. Do not add explanations, markdown, or code fences.\n\nNumbered English transcript:\n${numberedTranscript}`, [numberedTranscript, englishLines.length]);
+  const prompt = useMemo(() => `You are a professional football news translator. Translate every numbered English line into natural, accurate Burmese for narration and subtitles. Preserve the exact spoken meaning, names, teams, scores, dates, places, and football terms. Do not summarize, shorten, add facts, guess missing information, or invent anything. Do not merge or split lines. Every text value must contain a non-empty Burmese translation; never return an empty string. Return ONLY valid JSON in this exact format: {"translations":[{"line":1,"text":"Burmese translation for English line 1"},{"line":2,"text":"Burmese translation for English line 2"}]}. You MUST return exactly one object for every line number from 1 to ${englishLines.length}; do not skip, duplicate, reorder, or invent line numbers. Do not add explanations, markdown, or code fences.\n\nNumbered English transcript:\n${numberedTranscript}`, [numberedTranscript, englishLines.length]);
   const translationCount = useMemo(() => {
     try {
       const match = jsonOutput.match(/\{[\s\S]*\}/);
       const parsed = JSON.parse(match ? match[0] : jsonOutput) as { translations?: unknown };
-      return Array.isArray(parsed.translations) ? parsed.translations.filter((line) => typeof line === 'string' ? line.trim() : Boolean(line && typeof line === 'object' && 'line' in line && 'text' in line)).length : 0;
+      return Array.isArray(parsed.translations) ? parsed.translations.filter((line) => {
+        if (typeof line === 'string') return line.trim().length > 0;
+        if (line && typeof line === 'object' && 'line' in line && 'text' in line) return String((line as { text?: unknown }).text || '').trim().length > 0;
+        return false;
+      }).length : 0;
     } catch {
       return 0;
     }
@@ -60,7 +64,8 @@ export function CustomTranslationWorkflow({ duration, videoUrl, onTranslationApp
     if (actual.some((line) => !Number.isInteger(line)) || new Set(actual).size !== actual.length || actual.some((line, index) => line !== expected[index])) {
       throw new Error(`Line number မကိုက်ပါ။ 1 မှ ${englishLines.length} အထိ line number တစ်ခုစီပါရမယ်။`);
     }
-    if (items.some((item) => !item.text)) throw new Error('Burmese translation ထဲမှာ အလွတ်စာကြောင်းရှိပါတယ်။');
+    const emptyLine = items.find((item) => !item.text);
+    if (emptyLine) throw new Error(`Burmese translation line ${emptyLine.line || '?'} မှာ အလွတ်စာကြောင်းရှိပါတယ်။`);
     return items.map((item) => item.text);
   };
   const correctionPrompt = useMemo(() => `The previous translation output is incomplete or has a wrong line mapping. Compare the numbered English source with the current output, find the missing or duplicated line number, and regenerate the COMPLETE result. Preserve every spoken meaning exactly; do not summarize, merge, split, reorder, invent, or change facts. Return ONLY valid JSON in this exact format: {"translations":[{"line":1,"text":"..."},{"line":2,"text":"..."}]}. Return exactly one object for EVERY line number from 1 to ${englishLines.length}, in numeric order. Never return a plain string array.\n\nNumbered English source:\n${numberedTranscript}\n\nCurrent incomplete output:\n${jsonOutput}`, [englishLines.length, numberedTranscript, jsonOutput]);
