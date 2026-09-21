@@ -25,6 +25,7 @@ export function CustomTranslationWorkflow({ duration, videoUrl, onTranslationApp
   const [sourceCues, setSourceCues] = useState<CaptionCue[]>([]);
   const [jsonOutput, setJsonOutput] = useState('');
   const [copied, setCopied] = useState(false);
+  const [correctionCopied, setCorrectionCopied] = useState(false);
   const [applied, setApplied] = useState(false);
   const [error, setError] = useState('');
   const [transcribing, setTranscribing] = useState(false);
@@ -34,6 +35,16 @@ export function CustomTranslationWorkflow({ duration, videoUrl, onTranslationApp
   const timestampCues = useMemo(() => sourceCues.length === englishLines.length && englishLines.length > 0 ? sourceCues : buildCues(englishLines, duration), [sourceCues, englishLines, duration]);
   const numberedTranscript = useMemo(() => englishLines.map((line, index) => `[${index + 1}] ${line}`).join('\n'), [englishLines]);
   const prompt = useMemo(() => `You are a professional football news translator. Translate every numbered English line into natural, accurate Burmese for narration and subtitles. Preserve the exact spoken meaning, names, teams, scores, dates, places, and football terms. Do not summarize, shorten, add facts, guess missing information, or invent anything. Keep the exact order and return ONLY valid JSON in this format: {"translations":["Burmese line 1","Burmese line 2"]}. The number of translations must exactly match the number of numbered English lines. Do not merge lines, split lines, skip lines, add explanations, markdown, or code fences.\n\nNumbered English transcript:\n${numberedTranscript}`, [numberedTranscript]);
+  const translationCount = useMemo(() => {
+    try {
+      const match = jsonOutput.match(/\{[\s\S]*\}/);
+      const parsed = JSON.parse(match ? match[0] : jsonOutput) as { translations?: unknown };
+      return Array.isArray(parsed.translations) ? parsed.translations.filter((line) => String(line).trim()).length : 0;
+    } catch {
+      return 0;
+    }
+  }, [jsonOutput]);
+  const correctionPrompt = useMemo(() => `The previous translation output is incomplete. Compare the numbered English source with the current Burmese translations. Restore the missing line(s) by translating only the corresponding English meaning. Do not summarize, merge, split, reorder, invent, or change any existing meaning. Return ONLY valid JSON with exactly ${englishLines.length} strings in the translations array, one string for every English line from [1] to [${englishLines.length}].\n\nNumbered English source:\n${numberedTranscript}\n\nCurrent incomplete JSON:\n${jsonOutput}`, [englishLines.length, numberedTranscript, jsonOutput]);
 
   const copyFullPrompt = async () => {
     try {
@@ -42,6 +53,16 @@ export function CustomTranslationWorkflow({ duration, videoUrl, onTranslationApp
       window.setTimeout(() => setCopied(false), 1800);
     } catch {
       setError('Prompt copy မရပါ။ စာသားကို manually select လုပ်ပြီး copy လုပ်ပါ။');
+    }
+  };
+
+  const copyCorrectionPrompt = async () => {
+    try {
+      await navigator.clipboard.writeText(correctionPrompt);
+      setCorrectionCopied(true);
+      window.setTimeout(() => setCorrectionCopied(false), 1800);
+    } catch {
+      setError('Correction prompt copy မရပါ။ စာသားကို manually select လုပ်ပြီး copy လုပ်ပါ။');
     }
   };
 
@@ -118,6 +139,12 @@ export function CustomTranslationWorkflow({ duration, videoUrl, onTranslationApp
       <div className="space-y-2">
         <label htmlFor="custom-translation-json" className="text-xs font-semibold text-slate-700">Any AI JSON output paste here</label>
         <textarea id="custom-translation-json" value={jsonOutput} onChange={(event) => { setJsonOutput(event.target.value); setApplied(false); setError(''); }} rows={5} placeholder={'{"translations":["မြန်မာစာကြောင်း ၁","မြန်မာစာကြောင်း ၂"]}'} className="font-myanmar w-full resize-y rounded-xl border border-slate-300 px-3 py-3 text-sm leading-7 text-slate-800 focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-100" />
+        {jsonOutput.trim() && translationCount !== englishLines.length && (
+          <div className="flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs leading-5 text-amber-800">လိုအပ်တာ {englishLines.length} ကြောင်း၊ ရထားတာ {translationCount} ကြောင်းပါ။ AI က line ကျော်/ပေါင်းထားနိုင်ပါတယ်။ Correction Prompt နဲ့ ပြန်တောင်းပါ။</p>
+            <Button size="sm" variant="secondary" onClick={copyCorrectionPrompt}>{correctionCopied ? 'Copied' : 'Copy Correction Prompt'}</Button>
+          </div>
+        )}
       </div>
 
       {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{error}</p>}
