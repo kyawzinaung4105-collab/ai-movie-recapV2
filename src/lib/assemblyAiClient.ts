@@ -87,7 +87,20 @@ async function transcribeDirectly(videoUrl: string | undefined, onStatus?: (mess
     if (!media.ok) throw new Error('Uploaded video ကို ဖတ်မရပါ။');
     mediaBody = await media.blob();
   }
-  const upload = await assemblyFetch('/v2/upload', { method: 'POST', body: mediaBody }, apiKey);
+  onStatus?.('AssemblyAI upload connection ချိတ်နေပါတယ်...');
+  const uploadController = new AbortController();
+  const uploadTimeout = window.setTimeout(() => uploadController.abort(), 90000);
+  let upload: Response;
+  try {
+    upload = await assemblyFetch('/v2/upload', { method: 'POST', body: mediaBody, signal: uploadController.signal }, apiKey);
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new Error('AssemblyAI direct upload အချိန်ကျော်သွားပါတယ်။ Proxy fallback သို့ ပြောင်းနေပါတယ်...');
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(uploadTimeout);
+  }
   const { upload_url: uploadUrl } = await upload.json() as { upload_url?: string };
   if (!uploadUrl) throw new Error('AssemblyAI upload URL မရပါ။');
 
