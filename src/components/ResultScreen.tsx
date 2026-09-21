@@ -2,13 +2,11 @@ import { useEffect, useState } from 'react';
 import { RotateCcw, Volume2, Loader2 } from 'lucide-react';
 import { useRecap } from '@/context/RecapContext';
 import { MovieTitleEditor } from '@/components/MovieTitleEditor';
-import { BlurEditor } from '@/components/BlurEditor';
-import { CaptionEditor } from '@/components/CaptionEditor';
 import { FinalPreview } from '@/components/FinalPreview';
 import { VideoExporter } from '@/components/VideoExporter';
 import { CustomAudioUpload } from '@/components/CustomAudioUpload';
 import { TranslationEditor } from '@/components/TranslationEditor';
-import { CustomTranslationWorkflow } from '@/components/CustomTranslationWorkflow';
+import { BurmeseReviewPanel } from '@/components/BurmeseReviewPanel';
 import { Button } from '@/components/ui/Button';
 import { generateTimedElevenLabsVoiceover } from '@/lib/elevenlabsClient';
 
@@ -20,7 +18,6 @@ export function ResultScreen() {
     movieTitle,
     setMovieTitle,
     blurSettings,
-    setBlurSettings,
     captionSettings,
     setCaptionSettings,
     language,
@@ -99,14 +96,6 @@ export function ResultScreen() {
         />
       </section>
 
-      {isCustomMode && (
-        <CustomTranslationWorkflow
-          duration={videoSource.duration}
-          videoUrl={videoSource.objectUrl}
-          onTranslationApplied={setCustomCues}
-        />
-      )}
-
       {language === 'english' && generationResult && (
         <TranslationEditor
           sourceCues={generationResult.cues || []}
@@ -142,20 +131,7 @@ export function ResultScreen() {
         </section>
       )}
 
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-        <BlurEditor
-          settings={blurSettings}
-          onChange={setBlurSettings}
-          videoSource={videoSource}
-        />
-        <CaptionEditor
-          settings={captionSettings}
-          onChange={setCaptionSettings}
-          language={language}
-          logoSettings={logoSettings}
-          onLogoChange={setLogoSettings}
-        />
-      </div>
+      {isCustomMode && <BurmeseReviewPanel cues={customCues} onChange={setCustomCues} />}
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <CustomAudioUpload
