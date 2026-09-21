@@ -68,19 +68,26 @@ function wordsToCues(words: AssemblyWord[]): CaptionCue[] {
   return cues;
 }
 
-async function transcribeDirectly(videoUrl: string, onStatus?: (message: string) => void): Promise<CaptionCue[]> {
+async function transcribeDirectly(videoUrl: string | undefined, onStatus?: (message: string) => void, videoFile?: File): Promise<CaptionCue[]> {
   const apiKey = loadApiKeys().assemblyAiKey;
   if (!apiKey) throw new Error('AssemblyAI API Key မရှိသေးပါ။ Settings မှာ key ထည့်ပါ။');
 
   onStatus?.('Uploading video audio to AssemblyAI...');
-  let media: Response;
-  try {
-    media = await fetch(videoUrl);
-  } catch {
-    throw new Error('Video file ကို browser မှ ဖတ်မရပါ။ Video ကို ပြန်ရွေးပြီး Transcribe ကို ထပ်နှိပ်ပါ။');
+  let mediaBody: Blob | File;
+  if (videoFile) {
+    mediaBody = videoFile;
+  } else {
+    if (!videoUrl) throw new Error('Video source မတွေ့ပါ။ Video ကို ပြန်ရွေးပါ။');
+    let media: Response;
+    try {
+      media = await fetch(videoUrl);
+    } catch {
+      throw new Error('Video file ကို browser မှ ဖတ်မရပါ။ Video ကို ပြန်ရွေးပြီး Transcribe ကို ထပ်နှိပ်ပါ။');
+    }
+    if (!media.ok) throw new Error('Uploaded video ကို ဖတ်မရပါ။');
+    mediaBody = await media.blob();
   }
-  if (!media.ok) throw new Error('Uploaded video ကို ဖတ်မရပါ။');
-  const upload = await assemblyFetch('/v2/upload', { method: 'POST', body: await media.blob() }, apiKey);
+  const upload = await assemblyFetch('/v2/upload', { method: 'POST', body: mediaBody }, apiKey);
   const { upload_url: uploadUrl } = await upload.json() as { upload_url?: string };
   if (!uploadUrl) throw new Error('AssemblyAI upload URL မရပါ။');
 
@@ -165,9 +172,15 @@ export async function transcribeVideoWithAssemblyAI(videoUrl?: string, onStatus?
   try {
     const apiKey = loadApiKeys().assemblyAiKey;
     if (!apiKey) throw new Error('AssemblyAI API Key မရှိသေးပါ။ Settings မှာ key ထည့်ပါ။');
-    return await transcribeThroughLocalProxy(videoUrl, apiKey, onStatus, videoFile);
-  } catch (proxyError) {
-    const proxyMessage = proxyError instanceof Error ? proxyError.message : 'AssemblyAI proxy request failed.';
-    throw new Error(`AssemblyAI proxy မအောင်မြင်ပါ: ${proxyMessage}`);
+    return await transcribeDirectly(videoUrl, onStatus, videoFile);
+  } catch (directError) {
+    try {
+      const apiKey = loadApiKeys().assemblyAiKey;
+      return await transcribeThroughLocalProxy(videoUrl, apiKey, onStatus, videoFile);
+    } catch (proxyError) {
+      const directMessage = directError instanceof Error ? directError.message : 'AssemblyAI direct request failed.';
+      const proxyMessage = proxyError instanceof Error ? proxyError.message : 'AssemblyAI proxy request failed.';
+      throw new Error(`${directMessage}\n\nProxy fallback: ${proxyMessage}`);
+    }
   }
 }
