@@ -118,9 +118,18 @@ async function transcribeThroughLocalProxy(videoUrl: string, apiKey: string, onS
   form.append('video', await media.blob(), 'video.mp4');
   const onlineProxy = 'https://3000-iarmrhy4pa7v7i6d86j2f-8f72b23c.us4.manus.computer/api/assemblyai/transcribe';
   const response = await fetch(onlineProxy, { method: 'POST', body: form });
-  const payload = await response.json() as { cues?: CaptionCue[]; error?: string };
-  if (!response.ok || !payload.cues) throw new Error(payload.error || 'Online AssemblyAI proxy မရပါ။');
-  return payload.cues;
+  const payload = await response.json() as { cues?: CaptionCue[]; jobId?: string; error?: string };
+  if (!response.ok || (!payload.cues && !payload.jobId)) throw new Error(payload.error || 'Online AssemblyAI proxy မရပါ။');
+  if (payload.cues) return payload.cues;
+  for (let attempt = 0; attempt < 120; attempt += 1) {
+    await new Promise((resolve) => window.setTimeout(resolve, 2500));
+    onStatus?.(`Online transcription... ${Math.round(((attempt + 1) / 120) * 100)}%`);
+    const statusResponse = await fetch(`${onlineProxy}/${payload.jobId}?apiKey=${encodeURIComponent(apiKey)}`);
+    const status = await statusResponse.json() as { status?: string; cues?: CaptionCue[]; error?: string };
+    if (status.status === 'completed' && status.cues) return status.cues;
+    if (!statusResponse.ok) throw new Error(status.error || 'Online transcription failed.');
+  }
+  throw new Error('Online transcription timeout ဖြစ်သွားပါတယ်။');
 }
 
 export async function transcribeVideoWithAssemblyAI(videoUrl: string, onStatus?: (message: string) => void): Promise<CaptionCue[]> {
