@@ -130,12 +130,13 @@ async function transcribeThroughLocalProxy(videoUrl: string | undefined, apiKey:
   const payload = await new Promise<{ cues?: CaptionCue[]; jobId?: string; error?: string }>((resolve, reject) => {
     const request = new XMLHttpRequest();
     request.open('POST', onlineProxy);
-    request.timeout = 120000;
+    // Large videos can upload slowly on mobile networks; allow up to 10 minutes.
+    request.timeout = 600000;
     request.upload.onprogress = (event) => {
       if (event.lengthComputable) onStatus?.(`Video ကို upload လုပ်နေပါတယ်... ${Math.round((event.loaded / event.total) * 100)}%`);
     };
     request.onerror = () => reject(new Error('Video upload မအောင်မြင်ပါ။ Internet connection ကို စစ်ပြီး ပြန်စမ်းပါ။'));
-    request.ontimeout = () => reject(new Error('Video upload အချိန်ကျော်သွားပါတယ်။ Video file သေးသေးနဲ့ ပြန်စမ်းပါ။'));
+    request.ontimeout = () => reject(new Error('Video upload ၁၀ မိနစ်အတွင်း မပြီးပါ။ Video file ကို compress လုပ်ပြီး ပြန်စမ်းပါ။'));
     request.onload = () => {
       let result: { cues?: CaptionCue[]; jobId?: string; error?: string } = {};
       try { result = JSON.parse(request.responseText) as typeof result; } catch { /* handled below */ }
