@@ -55,7 +55,9 @@ function wordsToCues(words: AssemblyWord[]): CaptionCue[] {
     if (!word.text || word.start == null || word.end == null) continue;
     current.push(word);
     const wordCount = current.length;
-    if (/[.!?]$/.test(word.text) || wordCount >= 12) flush();
+    // Prefer punctuation boundaries so Burmese translation receives complete thoughts.
+    // Keep a high safety limit only for transcripts that contain no punctuation at all.
+    if (/[.!?။！？]$/.test(word.text) || wordCount >= 30) flush();
   }
   flush();
   return cues;
