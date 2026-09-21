@@ -1,6 +1,5 @@
 import { ArrowLeft, ArrowRight, Type } from 'lucide-react';
 import { useRecap } from '@/context/RecapContext';
-import { VideoPreviewScreen } from '@/components/VideoPreviewScreen';
 import { CustomTranslationWorkflow } from '@/components/CustomTranslationWorkflow';
 import { BlurEditor } from '@/components/BlurEditor';
 import { CaptionEditor } from '@/components/CaptionEditor';
@@ -37,10 +36,6 @@ export function SourceTextScreen({ onContinue, onBack }: SourceTextScreenProps) 
         <h1 className="mt-1 text-2xl font-bold text-slate-900">Source Text</h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">Preview your video, create the English source transcript, paste the Burmese translation, and prepare the subtitle style before choosing a voice.</p>
       </div>
-
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-        <VideoPreviewScreen videoSource={videoSource} onContinue={() => undefined} onBack={onBack} showContinue={false} />
-      </section>
 
       <CustomTranslationWorkflow
         duration={videoSource.duration}
