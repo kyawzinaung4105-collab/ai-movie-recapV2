@@ -149,7 +149,7 @@ export function CustomTranslationWorkflow({ duration, videoUrl, videoFile, onTra
           <div className="flex items-center gap-2">
             <span className="text-xs text-slate-400">{englishLines.length} lines</span>
             <Button size="sm" variant="secondary" onClick={transcribeSourceVideo} disabled={transcribing || !videoUrl}>
-              {transcribing ? 'Transcribing...' : 'Transcribe with AssemblyAI'}
+              {transcribing ? (transcriptionStatus || 'Uploading video...') : 'Transcribe with AssemblyAI'}
             </Button>
           </div>
         </div>
