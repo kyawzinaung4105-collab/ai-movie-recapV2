@@ -138,10 +138,10 @@ export function VideoExporter({
       } else {
         args.push('-map', '0:v');
       }
-      args.push('-map', hasAudio ? '1:a' : '0:a?');
+      if (hasAudio) args.push('-map', '1:a');
       args.push('-c:v', filters.length > 0 ? 'libx264' : 'copy');
       if (filters.length > 0) args.push('-preset', 'ultrafast');
-      if (hasAudio) args.push('-c:a', 'aac');
+      if (hasAudio) args.push('-c:a', 'aac', '-af', 'apad');
       else if (filters.length > 0) args.push('-c:a', 'copy');
       args.push('-shortest', 'output.mp4');
 

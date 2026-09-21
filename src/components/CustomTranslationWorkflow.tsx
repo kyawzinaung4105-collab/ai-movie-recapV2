@@ -22,7 +22,6 @@ function buildCues(lines: string[], duration?: number): CaptionCue[] {
 
 export function CustomTranslationWorkflow({ duration, videoUrl, onTranslationApplied }: CustomTranslationWorkflowProps) {
   const [englishTranscript, setEnglishTranscript] = useState('');
-  const [sourceCues, setSourceCues] = useState<CaptionCue[]>([]);
   const [jsonOutput, setJsonOutput] = useState('');
   const [copied, setCopied] = useState(false);
   const [correctionCopied, setCorrectionCopied] = useState(false);
@@ -32,9 +31,10 @@ export function CustomTranslationWorkflow({ duration, videoUrl, onTranslationApp
   const [transcriptionStatus, setTranscriptionStatus] = useState('');
 
   const englishLines = useMemo(() => englishTranscript.split(/\r?\n/).map((line) => line.trim()).filter(Boolean), [englishTranscript]);
-  const timestampCues = useMemo(() => sourceCues.length === englishLines.length && englishLines.length > 0 ? sourceCues : buildCues(englishLines, duration), [sourceCues, englishLines, duration]);
   const numberedTranscript = useMemo(() => englishLines.map((line, index) => `[${index + 1}] ${line}`).join('\n'), [englishLines]);
-  const prompt = useMemo(() => `You are a professional football news subtitle writer and Burmese sports-news narrator. Rewrite each numbered English line as natural, conversational Burmese that sounds like a real Myanmar football commentator speaking. Do NOT translate word-for-word or preserve English grammar. Use natural Burmese sentence order, particles, connectors, and football-news expressions. Keep the exact meaning and all facts: player names, team names, scores, dates, places, and football terms. Do not summarize, shorten away important information, add facts, guess missing information, or invent anything. Keep each numbered line as one subtitle unit, but make it smooth and speakable. Every text value must contain a non-empty Burmese translation; never return an empty string. Return ONLY valid JSON in this exact format: {"translations":[{"line":1,"text":"သဘာဝကျတဲ့ မြန်မာဘောလုံးသတင်းစာကြောင်း"},{"line":2,"text":"နောက်ထပ် သဘာဝကျတဲ့ စာကြောင်း"}]}. You MUST return exactly one object for every line number from 1 to ${englishLines.length}; do not skip, duplicate, reorder, or invent line numbers. Do not add explanations, markdown, or code fences.\n\nNumbered English transcript:\n${numberedTranscript}`, [numberedTranscript, englishLines.length]);
+  const durationSeconds = Math.max(1, duration || 0);
+  const durationText = durationSeconds >= 60 ? `${Math.floor(durationSeconds / 60)} minutes ${Math.round(durationSeconds % 60)} seconds` : `${Math.round(durationSeconds)} seconds`;
+  const prompt = useMemo(() => `You are a professional football news subtitle writer and Burmese sports-news narrator. Rewrite each numbered English line as natural, conversational Burmese that sounds like a real Myanmar football commentator speaking. Do NOT translate word-for-word or preserve English grammar. Use natural Burmese sentence order, particles, connectors, and football-news expressions. Keep the exact meaning and all facts: player names, team names, scores, dates, places, and football terms. Do not summarize, shorten away important information, add facts, guess missing information, or invent anything. This video is ${durationText} long. Make the Burmese lines comfortable for spoken narration across the FULL video duration; do not assume the narration should end when the original speech ends. Keep each numbered line as one subtitle unit, but make it smooth and speakable. Every text value must contain a non-empty Burmese translation; never return an empty string. Return ONLY valid JSON in this exact format: {"translations":[{"line":1,"text":"သဘာဝကျတဲ့ မြန်မာဘောလုံးသတင်းစာကြောင်း"},{"line":2,"text":"နောက်ထပ် သဘာဝကျတဲ့ စာကြောင်း"}]}. You MUST return exactly one object for every line number from 1 to ${englishLines.length}; do not skip, duplicate, reorder, or invent line numbers. Do not add explanations, markdown, or code fences.\n\nNumbered English transcript:\n${numberedTranscript}`, [numberedTranscript, englishLines.length, durationText]);
   const translationCount = useMemo(() => {
     try {
       const match = jsonOutput.match(/\{[\s\S]*\}/);
@@ -68,7 +68,7 @@ export function CustomTranslationWorkflow({ duration, videoUrl, onTranslationApp
     if (emptyLine) throw new Error(`Burmese translation line ${emptyLine.line || '?'} မှာ အလွတ်စာကြောင်းရှိပါတယ်။`);
     return items.map((item) => item.text);
   };
-  const correctionPrompt = useMemo(() => `The previous Burmese subtitle output is incomplete or has a wrong line mapping. Regenerate the COMPLETE result in natural, conversational Burmese football-news style, not word-for-word Burmese. Compare the numbered English source with the current output. Restore missing lines while preserving every spoken meaning and fact. Do not summarize, merge, split, reorder, invent, or change player names, teams, scores, dates, or places. Return ONLY valid JSON in this exact format: {"translations":[{"line":1,"text":"သဘာဝကျတဲ့ မြန်မာစာကြောင်း"},{"line":2,"text":"သဘာဝကျတဲ့ မြန်မာစာကြောင်း"}]}. Return exactly one non-empty object for EVERY line number from 1 to ${englishLines.length}, in numeric order. Never return a plain string array.\n\nNumbered English source:\n${numberedTranscript}\n\nCurrent incomplete output:\n${jsonOutput}`, [englishLines.length, numberedTranscript, jsonOutput]);
+  const correctionPrompt = useMemo(() => `The previous Burmese subtitle output is incomplete or has a wrong line mapping. Regenerate the COMPLETE result in natural, conversational Burmese football-news style, not word-for-word Burmese. This video is ${durationText} long, so the narration will be spread across the FULL video duration. Compare the numbered English source with the current output. Restore missing lines while preserving every spoken meaning and fact. Do not summarize, merge, split, reorder, invent, or change player names, teams, scores, dates, or places. Return ONLY valid JSON in this exact format: {"translations":[{"line":1,"text":"သဘာဝကျတဲ့ မြန်မာစာကြောင်း"},{"line":2,"text":"သဘာဝကျတဲ့ မြန်မာစာကြောင်း"}]}. Return exactly one non-empty object for EVERY line number from 1 to ${englishLines.length}, in numeric order. Never return a plain string array.\n\nNumbered English source:\n${numberedTranscript}\n\nCurrent incomplete output:\n${jsonOutput}`, [englishLines.length, numberedTranscript, jsonOutput, durationText]);
 
   const copyFullPrompt = async () => {
     try {
@@ -100,7 +100,7 @@ export function CustomTranslationWorkflow({ duration, videoUrl, onTranslationApp
       if (translatedLines.length !== englishLines.length) {
         throw new Error(`English line ${englishLines.length} ကြောင်းရှိပါတယ်။ Burmese translation က ${translatedLines.length} ကြောင်းပဲရှိပါတယ်။`);
       }
-      onTranslationApplied(timestampCues.map((cue, index) => ({ ...cue, text: translatedLines[index] })));
+      onTranslationApplied(buildCues(translatedLines, duration));
       setApplied(true);
     } catch (err) {
       setApplied(false);
@@ -117,7 +117,6 @@ export function CustomTranslationWorkflow({ duration, videoUrl, onTranslationApp
     setTranscribing(true);
     try {
       const cues = await transcribeVideoWithAssemblyAI(videoUrl, setTranscriptionStatus);
-      setSourceCues(cues);
       setEnglishTranscript(cues.map((cue) => cue.text).join('\n'));
       setTranscriptionStatus(`${cues.length} English timestamp segments ရပါပြီ`);
     } catch (err) {
@@ -147,7 +146,7 @@ export function CustomTranslationWorkflow({ duration, videoUrl, onTranslationApp
             </Button>
           </div>
         </div>
-        <textarea value={englishTranscript} onChange={(event) => { setEnglishTranscript(event.target.value); setSourceCues([]); setApplied(false); setError(''); }} rows={7} placeholder="English transcript text will appear here..." className="w-full resize-y rounded-xl border border-indigo-300 px-3 py-3 text-sm leading-6 text-slate-800 focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-100" />
+        <textarea value={englishTranscript} onChange={(event) => { setEnglishTranscript(event.target.value); setApplied(false); setError(''); }} rows={7} placeholder="English transcript text will appear here..." className="w-full resize-y rounded-xl border border-indigo-300 px-3 py-3 text-sm leading-6 text-slate-800 focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-100" />
         {transcriptionStatus && <p className="text-xs text-indigo-700">{transcriptionStatus}</p>}
       </div>
 

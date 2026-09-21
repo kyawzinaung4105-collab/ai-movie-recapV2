@@ -10,7 +10,7 @@ import { CustomAudioUpload } from '@/components/CustomAudioUpload';
 import { TranslationEditor } from '@/components/TranslationEditor';
 import { CustomTranslationWorkflow } from '@/components/CustomTranslationWorkflow';
 import { Button } from '@/components/ui/Button';
-import { generateElevenLabsVoiceover } from '@/lib/elevenlabsClient';
+import { generateTimedElevenLabsVoiceover } from '@/lib/elevenlabsClient';
 
 export function ResultScreen() {
   const {
@@ -127,7 +127,7 @@ export function ResultScreen() {
               setVoiceoverError('');
               setVoiceoverLoading(true);
               try {
-                const audioUrl = await generateElevenLabsVoiceover(customCues.map((cue) => cue.text).join(' '), voiceId);
+                const audioUrl = await generateTimedElevenLabsVoiceover(customCues, voiceId);
                 setCustomAudioUrl(audioUrl);
               } catch (error) {
                 setVoiceoverError(error instanceof Error ? error.message : 'Voiceover generation failed.');
