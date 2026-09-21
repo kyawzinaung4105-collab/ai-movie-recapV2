@@ -1,5 +1,7 @@
 import { loadApiKeys } from './settingsStore';
 import type { CaptionCue } from '@/types';
+import { FFmpeg } from '@ffmpeg/ffmpeg';
+import { fetchFile } from '@ffmpeg/util';
 
 interface AssemblyWord {
   text?: string;
@@ -13,6 +15,18 @@ interface AssemblyTranscript {
   error?: string;
   text?: string;
   words?: AssemblyWord[];
+}
+
+async function extractAudioForTranscription(videoFile: File, onStatus?: (message: string) => void): Promise<File> {
+  onStatus?.('Video ထဲက audio ကို ခွဲထုတ်နေပါတယ်...');
+  const ffmpeg = new FFmpeg();
+  const corePath = `${import.meta.env.BASE_URL}ffmpeg/ffmpeg-core`;
+  await ffmpeg.load({ coreURL: `${corePath}.js`, wasmURL: `${corePath}.wasm` });
+  await ffmpeg.writeFile('input.mp4', await fetchFile(videoFile));
+  await ffmpeg.exec(['-i', 'input.mp4', '-vn', '-ac', '1', '-ar', '16000', '-b:a', '32k', 'speech.mp3']);
+  const audio = await ffmpeg.readFile('speech.mp3');
+  if (typeof audio === 'string') throw new Error('Audio track ကို ဖတ်မရပါ။');
+  return new File([audio], 'speech.mp3', { type: 'audio/mpeg' });
 }
 
 async function readError(response: Response): Promise<string> {
@@ -75,7 +89,7 @@ async function transcribeDirectly(videoUrl: string | undefined, onStatus?: (mess
   onStatus?.('Uploading video audio to AssemblyAI...');
   let mediaBody: Blob | File;
   if (videoFile) {
-    mediaBody = videoFile;
+    mediaBody = await extractAudioForTranscription(videoFile, onStatus);
   } else {
     if (!videoUrl) throw new Error('Video source မတွေ့ပါ။ Video ကို ပြန်ရွေးပါ။');
     let media: Response;
