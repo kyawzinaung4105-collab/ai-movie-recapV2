@@ -39,7 +39,7 @@ export function RecapSelector({ onSelect, onCustomSelect, onBack }: RecapSelecto
           </div>
           <div className="text-left">
             <p className="text-lg font-semibold text-slate-900">Custom Translation Workflow</p>
-            <p className="text-sm text-slate-500">Copy prompt to Gemini, paste Burmese JSON, and sync subtitles</p>
+            <p className="text-sm text-slate-500">Copy prompt to any AI, paste Burmese JSON, and sync subtitles</p>
           </div>
           <ArrowRight className="ml-auto h-5 w-5 text-slate-300 group-hover:text-emerald-500 transition-colors" />
         </button>

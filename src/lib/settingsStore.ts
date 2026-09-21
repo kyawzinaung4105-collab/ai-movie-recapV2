@@ -5,6 +5,7 @@ export interface ApiKeys {
   aiProvider: AiProvider;
   aiBaseUrl: string;
   aiModel: string;
+  assemblyAiKey: string;
   elevenLabsKey: string;
   ffmpegBackendUrl: string;
 }
@@ -28,6 +29,7 @@ export function loadApiKeys(): ApiKeys {
         aiProvider: provider,
         aiBaseUrl: parsed.aiBaseUrl || parsed.apiBaseUrl || '',
         aiModel: parsed.aiModel || (provider === 'gemini' ? 'gemini-3.6-flash' : 'gpt-4o-mini'),
+        assemblyAiKey: parsed.assemblyAiKey || '',
         elevenLabsKey: parsed.elevenLabsKey || '',
         ffmpegBackendUrl: parsed.ffmpegBackendUrl || '',
       };
@@ -40,6 +42,7 @@ export function loadApiKeys(): ApiKeys {
     aiProvider: 'gemini',
     aiBaseUrl: '',
     aiModel: 'gemini-3.6-flash',
+    assemblyAiKey: '',
     elevenLabsKey: '',
     ffmpegBackendUrl: '',
   };
@@ -58,6 +61,9 @@ export function getMissingConfig(): string[] {
   const missing: string[] = [];
   if (!keys.aiKey) {
     missing.push('AI API Key (Gemini / OpenAI / Custom)');
+  }
+  if (!keys.assemblyAiKey) {
+    missing.push('AssemblyAI API Key (English transcript)');
   }
   if (!keys.elevenLabsKey) {
     missing.push('ElevenLabs API Key');

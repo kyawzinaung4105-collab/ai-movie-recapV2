@@ -89,6 +89,7 @@ export function ResultScreen() {
       {isCustomMode && (
         <CustomTranslationWorkflow
           duration={videoSource.duration}
+          videoUrl={videoSource.objectUrl}
           onTranslationApplied={setCustomCues}
         />
       )}

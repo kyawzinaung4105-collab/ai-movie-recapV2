@@ -12,6 +12,7 @@ interface SettingsModalProps {
 export function SettingsModal({ open, onClose, onSaved }: SettingsModalProps) {
   const [keys, setKeys] = useState<ApiKeys>(loadApiKeys());
   const [showAi, setShowAi] = useState(false);
+  const [showAssembly, setShowAssembly] = useState(false);
   const [showEleven, setShowEleven] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -52,6 +53,28 @@ export function SettingsModal({ open, onClose, onSaved }: SettingsModalProps) {
           <p className="text-sm text-slate-500">
             Select your AI provider and enter the API key below. Keys are stored locally in your browser only.
           </p>
+
+          <div className="space-y-2 rounded-xl border border-indigo-200 bg-indigo-50 p-4">
+            <div className="flex items-center justify-between gap-2">
+              <label className="text-sm font-semibold text-indigo-900">AssemblyAI API Key (Required for free transcript)</label>
+              <a href="https://www.assemblyai.com/app/account" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-indigo-700 hover:text-indigo-900">
+                Get Free Key <ExternalLink className="h-3 w-3" />
+              </a>
+            </div>
+            <div className="relative">
+              <input
+                type={showAssembly ? 'text' : 'password'}
+                value={keys.assemblyAiKey}
+                onChange={(e) => setKeys({ ...keys, assemblyAiKey: e.target.value })}
+                placeholder="AssemblyAI API key"
+                className="w-full rounded-xl border border-indigo-300 bg-white py-2.5 pl-4 pr-10 text-sm text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+              />
+              <button onClick={() => setShowAssembly(!showAssembly)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                {showAssembly ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+            <p className="text-xs leading-5 text-indigo-700">Video ထဲက English speech ကို timestamp ပါတဲ့ transcript ပြောင်းပေးပါသည်။ Key ကို server မတင်ဘဲ ဒီ browser ထဲမှာပဲ သိမ်းထားပါသည်။</p>
+          </div>
 
           {/* AI Provider */}
           <div className="space-y-2">

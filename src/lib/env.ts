@@ -5,6 +5,7 @@ export function getEnvConfig(): EnvConfig {
   const keys = loadApiKeys();
   return {
     hasAiKey: Boolean(keys.aiKey),
+    hasAssemblyAiKey: Boolean(keys.assemblyAiKey),
     hasElevenLabsKey: Boolean(keys.elevenLabsKey),
     hasFFmpegBackend: Boolean(keys.ffmpegBackendUrl),
     missing: getMissingConfig(),

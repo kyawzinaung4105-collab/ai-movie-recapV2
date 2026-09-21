@@ -93,6 +93,7 @@ export interface GenerationResult {
 
 export interface EnvConfig {
   hasAiKey: boolean;
+  hasAssemblyAiKey: boolean;
   hasElevenLabsKey: boolean;
   hasFFmpegBackend: boolean;
   missing: string[];
