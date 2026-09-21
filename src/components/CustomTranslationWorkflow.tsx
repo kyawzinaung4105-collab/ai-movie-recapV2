@@ -34,17 +34,36 @@ export function CustomTranslationWorkflow({ duration, videoUrl, onTranslationApp
   const englishLines = useMemo(() => englishTranscript.split(/\r?\n/).map((line) => line.trim()).filter(Boolean), [englishTranscript]);
   const timestampCues = useMemo(() => sourceCues.length === englishLines.length && englishLines.length > 0 ? sourceCues : buildCues(englishLines, duration), [sourceCues, englishLines, duration]);
   const numberedTranscript = useMemo(() => englishLines.map((line, index) => `[${index + 1}] ${line}`).join('\n'), [englishLines]);
-  const prompt = useMemo(() => `You are a professional football news translator. Translate every numbered English line into natural, accurate Burmese for narration and subtitles. Preserve the exact spoken meaning, names, teams, scores, dates, places, and football terms. Do not summarize, shorten, add facts, guess missing information, or invent anything. Keep the exact order and return ONLY valid JSON in this format: {"translations":["Burmese line 1","Burmese line 2"]}. The number of translations must exactly match the number of numbered English lines. Do not merge lines, split lines, skip lines, add explanations, markdown, or code fences.\n\nNumbered English transcript:\n${numberedTranscript}`, [numberedTranscript]);
+  const prompt = useMemo(() => `You are a professional football news translator. Translate every numbered English line into natural, accurate Burmese for narration and subtitles. Preserve the exact spoken meaning, names, teams, scores, dates, places, and football terms. Do not summarize, shorten, add facts, guess missing information, or invent anything. Do not merge or split lines. Return ONLY valid JSON in this exact format: {"translations":[{"line":1,"text":"Burmese translation for English line 1"},{"line":2,"text":"Burmese translation for English line 2"}]}. You MUST return exactly one object for every line number from 1 to ${englishLines.length}; do not skip, duplicate, reorder, or invent line numbers. Do not add explanations, markdown, or code fences.\n\nNumbered English transcript:\n${numberedTranscript}`, [numberedTranscript, englishLines.length]);
   const translationCount = useMemo(() => {
     try {
       const match = jsonOutput.match(/\{[\s\S]*\}/);
       const parsed = JSON.parse(match ? match[0] : jsonOutput) as { translations?: unknown };
-      return Array.isArray(parsed.translations) ? parsed.translations.filter((line) => String(line).trim()).length : 0;
+      return Array.isArray(parsed.translations) ? parsed.translations.filter((line) => typeof line === 'string' ? line.trim() : Boolean(line && typeof line === 'object' && 'line' in line && 'text' in line)).length : 0;
     } catch {
       return 0;
     }
   }, [jsonOutput]);
-  const correctionPrompt = useMemo(() => `The previous translation output is incomplete. Compare the numbered English source with the current Burmese translations. Restore the missing line(s) by translating only the corresponding English meaning. Do not summarize, merge, split, reorder, invent, or change any existing meaning. Return ONLY valid JSON with exactly ${englishLines.length} strings in the translations array, one string for every English line from [1] to [${englishLines.length}].\n\nNumbered English source:\n${numberedTranscript}\n\nCurrent incomplete JSON:\n${jsonOutput}`, [englishLines.length, numberedTranscript, jsonOutput]);
+
+  const extractTranslations = (value: unknown): string[] => {
+    if (!Array.isArray(value)) throw new Error('JSON ထဲမှာ translations array မတွေ့ပါ။');
+    const items = value.map((item, index) => {
+      if (typeof item === 'string') return { line: index + 1, text: item.trim() };
+      if (item && typeof item === 'object' && 'line' in item && 'text' in item) {
+        const row = item as { line: unknown; text: unknown };
+        return { line: Number(row.line), text: String(row.text).trim() };
+      }
+      throw new Error(`Translation item ${index + 1} က line/text format မဟုတ်ပါ။`);
+    });
+    const expected = Array.from({ length: englishLines.length }, (_, index) => index + 1);
+    const actual = items.map((item) => item.line);
+    if (actual.some((line) => !Number.isInteger(line)) || new Set(actual).size !== actual.length || actual.some((line, index) => line !== expected[index])) {
+      throw new Error(`Line number မကိုက်ပါ။ 1 မှ ${englishLines.length} အထိ line number တစ်ခုစီပါရမယ်။`);
+    }
+    if (items.some((item) => !item.text)) throw new Error('Burmese translation ထဲမှာ အလွတ်စာကြောင်းရှိပါတယ်။');
+    return items.map((item) => item.text);
+  };
+  const correctionPrompt = useMemo(() => `The previous translation output is incomplete or has a wrong line mapping. Compare the numbered English source with the current output, find the missing or duplicated line number, and regenerate the COMPLETE result. Preserve every spoken meaning exactly; do not summarize, merge, split, reorder, invent, or change facts. Return ONLY valid JSON in this exact format: {"translations":[{"line":1,"text":"..."},{"line":2,"text":"..."}]}. Return exactly one object for EVERY line number from 1 to ${englishLines.length}, in numeric order. Never return a plain string array.\n\nNumbered English source:\n${numberedTranscript}\n\nCurrent incomplete output:\n${jsonOutput}`, [englishLines.length, numberedTranscript, jsonOutput]);
 
   const copyFullPrompt = async () => {
     try {
@@ -71,9 +90,8 @@ export function CustomTranslationWorkflow({ duration, videoUrl, onTranslationApp
     try {
       const match = jsonOutput.match(/\{[\s\S]*\}/);
       const parsed = JSON.parse(match ? match[0] : jsonOutput) as { translations?: unknown };
-      if (!Array.isArray(parsed.translations)) throw new Error('JSON ထဲမှာ translations array မတွေ့ပါ။');
-      const translatedLines = parsed.translations.map((line) => String(line).trim()).filter(Boolean);
       if (englishLines.length === 0) throw new Error('English transcript ကို အရင်ထည့်ပါ။');
+      const translatedLines = extractTranslations(parsed.translations);
       if (translatedLines.length !== englishLines.length) {
         throw new Error(`English line ${englishLines.length} ကြောင်းရှိပါတယ်။ Burmese translation က ${translatedLines.length} ကြောင်းပဲရှိပါတယ်။`);
       }
@@ -138,7 +156,7 @@ export function CustomTranslationWorkflow({ duration, videoUrl, onTranslationApp
 
       <div className="space-y-2">
         <label htmlFor="custom-translation-json" className="text-xs font-semibold text-slate-700">Any AI JSON output paste here</label>
-        <textarea id="custom-translation-json" value={jsonOutput} onChange={(event) => { setJsonOutput(event.target.value); setApplied(false); setError(''); }} rows={5} placeholder={'{"translations":["မြန်မာစာကြောင်း ၁","မြန်မာစာကြောင်း ၂"]}'} className="font-myanmar w-full resize-y rounded-xl border border-slate-300 px-3 py-3 text-sm leading-7 text-slate-800 focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-100" />
+        <textarea id="custom-translation-json" value={jsonOutput} onChange={(event) => { setJsonOutput(event.target.value); setApplied(false); setError(''); }} rows={5} placeholder={'{"translations":[{"line":1,"text":"မြန်မာစာကြောင်း ၁"},{"line":2,"text":"မြန်မာစာကြောင်း ၂"}]}' } className="font-myanmar w-full resize-y rounded-xl border border-slate-300 px-3 py-3 text-sm leading-7 text-slate-800 focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-100" />
         {jsonOutput.trim() && translationCount !== englishLines.length && (
           <div className="flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs leading-5 text-amber-800">လိုအပ်တာ {englishLines.length} ကြောင်း၊ ရထားတာ {translationCount} ကြောင်းပါ။ AI က line ကျော်/ပေါင်းထားနိုင်ပါတယ်။ Correction Prompt နဲ့ ပြန်တောင်းပါ။</p>
