@@ -153,7 +153,7 @@ export function FinalPreview({ videoSource, blurSettings, captionSettings, movie
             className="w-full h-full"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
-            title="Final Preview"
+            title="Football News Preview"
           />
         </div>
         {effectiveAudioUrl && (
@@ -165,7 +165,7 @@ export function FinalPreview({ videoSource, blurSettings, captionSettings, movie
 
   return (
     <div className="space-y-3">
-      <h3 className="text-sm font-semibold text-slate-700">Final Preview</h3>
+      <h3 className="text-sm font-semibold text-slate-700">Football News Preview</h3>
 
       <div
         ref={containerRef}

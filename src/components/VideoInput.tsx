@@ -9,9 +9,9 @@ export function VideoInput({ onSelect }: VideoInputProps) {
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="text-center">
-        <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">AI Movie Recap</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">Football News Studio</h1>
         <p className="mt-2 text-slate-500 text-sm sm:text-base">
-          Upload a video or paste a link to generate an AI-powered movie recap with narration and subtitles.
+          Upload a match clip or paste a link to create a football news report with narration and subtitles.
         </p>
       </div>
 

@@ -66,7 +66,7 @@ export function RecapGenerator({ onOpenSettings }: RecapGeneratorProps) {
 
       setStep('result');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Recap generation failed. Please try again.');
+      setError(err instanceof Error ? err.message : 'Football news generation failed. Please try again.');
       setGenerationStage('error');
     }
   }, [
@@ -87,7 +87,7 @@ export function RecapGenerator({ onOpenSettings }: RecapGeneratorProps) {
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="text-center">
-        <h2 className="text-xl font-bold text-slate-900">Generate Recap</h2>
+        <h2 className="text-xl font-bold text-slate-900">Generate Football News</h2>
         <p className="text-sm text-slate-500 mt-1">Review your settings and generate</p>
       </div>
 
@@ -161,7 +161,7 @@ export function RecapGenerator({ onOpenSettings }: RecapGeneratorProps) {
             </>
           ) : (
             <>
-              <Sparkles className="h-5 w-5" /> Generate Recap
+              <Sparkles className="h-5 w-5" /> Generate Football News
             </>
           )}
         </Button>

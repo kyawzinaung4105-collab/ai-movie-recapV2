@@ -1,4 +1,4 @@
-import { Film, Upload, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Trophy, Upload, ArrowLeft, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
 interface RecapSelectorProps {
@@ -12,7 +12,7 @@ export function RecapSelector({ onSelect, onCustomSelect, onBack }: RecapSelecto
     <div className="space-y-6 animate-fade-in">
       <div className="text-center">
         <h2 className="text-xl font-bold text-slate-900">What would you like to create?</h2>
-        <p className="text-sm text-slate-500 mt-1">Select a recap type to continue</p>
+        <p className="text-sm text-slate-500 mt-1">Select a football news format to continue</p>
       </div>
 
       <div className="max-w-md mx-auto space-y-3">
@@ -21,11 +21,11 @@ export function RecapSelector({ onSelect, onCustomSelect, onBack }: RecapSelecto
           className="group flex w-full items-center gap-4 rounded-2xl border-2 border-slate-200 bg-white p-6 transition-all duration-300 hover:border-primary-400 hover:bg-primary-50 hover:shadow-md"
         >
           <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-primary-100 text-primary-600 transition-transform duration-300 group-hover:scale-110">
-            <Film className="h-7 w-7" />
+            <Trophy className="h-7 w-7" />
           </div>
           <div className="text-left">
-            <p className="text-lg font-semibold text-slate-900">AI Movie Recap</p>
-            <p className="text-sm text-slate-500">AI-generated narration and subtitle recap</p>
+            <p className="text-lg font-semibold text-slate-900">AI Football News</p>
+            <p className="text-sm text-slate-500">AI-generated match highlights, narration and subtitles</p>
           </div>
           <ArrowRight className="ml-auto h-5 w-5 text-slate-300 group-hover:text-primary-500 transition-colors" />
         </button>

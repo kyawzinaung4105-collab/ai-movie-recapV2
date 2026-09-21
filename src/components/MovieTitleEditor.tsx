@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pencil, Check, X, Film, AlertCircle } from 'lucide-react';
+import { Pencil, Check, X, Trophy, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
 interface MovieTitleEditorProps {
@@ -29,14 +29,14 @@ export function MovieTitleEditor({ title, titleConfident, onChange }: MovieTitle
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
-        <Film className="h-5 w-5 text-primary-600" />
-        <h3 className="text-sm font-semibold text-slate-700">Movie Title</h3>
+        <Trophy className="h-5 w-5 text-primary-600" />
+        <h3 className="text-sm font-semibold text-slate-700">News Headline</h3>
       </div>
 
       {!titleConfident && !isEditing && (
         <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
           <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
-          <span>Movie title could not be confidently identified. Please enter it manually.</span>
+          <span>Headline could not be confidently identified. Please enter it manually.</span>
         </div>
       )}
 

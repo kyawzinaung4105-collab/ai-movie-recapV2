@@ -33,7 +33,7 @@ export function ResultScreen() {
     if (!videoSource || movieTitle.trim()) return;
     const generatedTitle = generationResult?.movieTitle?.trim();
     const fileTitle = videoSource.fileName.replace(/\.[^/.]+$/, '').replace(/[_-]+/g, ' ').trim();
-    setMovieTitle(generatedTitle && generatedTitle !== 'Unknown Video' ? generatedTitle : (fileTitle || 'AI Movie Recap'));
+    setMovieTitle(generatedTitle && generatedTitle !== 'Unknown Video' ? generatedTitle : (fileTitle || 'Football News'));
   }, [movieTitle, generationResult?.movieTitle, videoSource, setMovieTitle]);
 
   if (!videoSource) return null;
@@ -59,7 +59,7 @@ export function ResultScreen() {
       {isCustomMode && (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
           <p className="text-sm text-emerald-700">
-            Upload your narration audio and transcript file below. They will be synced with your video automatically.
+            Upload your match narration audio and transcript below. They will be synced with your video automatically.
           </p>
         </div>
       )}

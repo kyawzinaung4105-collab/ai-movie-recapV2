@@ -9,9 +9,9 @@
 }
 
 :root {
-  --color-primary: #16a34a;
-  --color-primary-dark: #15803d;
-  --color-primary-light: #dcfce7;
+  --color-primary: #0f766e;
+  --color-primary-dark: #115e59;
+  --color-primary-light: #ccfbf1;
   --color-surface: #ffffff;
   --color-background: #f8fafc;
   --color-border: #e2e8f0;
@@ -86,4 +86,10 @@ input[type='range']::-moz-range-thumb {
 
 .animate-slide-in {
   animation: slideIn 0.3s ease-out;
+}
+
+
+/* Football newsroom visual language */
+.newsroom-accent {
+  background: linear-gradient(135deg, #0f172a 0%, #115e59 55%, #f59e0b 100%);
 }

@@ -21,11 +21,11 @@ interface VideoExporterProps {
   logoSettings?: LogoSettings;
 }
 
-export function VideoExporter({ 
-  movieTitle, 
-  disabled, 
-  videoBlobUrl, 
-  audioTrackUrl, 
+export function VideoExporter({
+  movieTitle,
+  disabled,
+  videoBlobUrl,
+  audioTrackUrl,
   subtitles = [],
   captionStyle,
   logoSettings,
@@ -36,7 +36,7 @@ export function VideoExporter({
   const [done, setDone] = useState(false);
   const [outputSize, setOutputSize] = useState<'original' | 'youtube' | 'tiktok'>('original');
 
-  const safeTitle = (movieTitle && movieTitle.trim() !== '') ? movieTitle : 'ai-movie-recap';
+  const safeTitle = movieTitle && movieTitle.trim() !== '' ? movieTitle : 'football-news';
 
   const assColor = (hex: string) => {
     const value = hex.replace('#', '').padStart(6, '0');
@@ -68,39 +68,25 @@ export function VideoExporter({
     setDone(false);
     setExporting(true);
     setStatusText('Loading FFmpeg engine...');
+    let ffmpeg: FFmpeg | undefined;
 
     try {
-      const ffmpeg = new FFmpeg();
-
+      ffmpeg = new FFmpeg();
       ffmpeg.on('log', ({ message }: { message: string }) => {
-        console.log(message);
-        if (message.includes('time=')) {
-          setStatusText(`Processing... (${message})`);
-        }
+        if (message.includes('time=')) setStatusText(`Processing... (${message})`);
       });
 
-      // Keep the worker and core on the Vercel origin. A Worker cannot load the
-      // package's CDN chunk from a different origin in production.
       const corePath = `${import.meta.env.BASE_URL}ffmpeg/ffmpeg-core`;
-      await ffmpeg.load({
-        coreURL: `${corePath}.js`,
-        wasmURL: `${corePath}.wasm`,
-      });
+      await ffmpeg.load({ coreURL: `${corePath}.js`, wasmURL: `${corePath}.wasm` });
 
       let targetVideoUrl = videoBlobUrl;
       if (!targetVideoUrl) {
         const videoElement = document.querySelector('video') as HTMLVideoElement;
-        if (videoElement && videoElement.src) {
-          targetVideoUrl = videoElement.src;
-        }
+        targetVideoUrl = videoElement?.src;
       }
-
-      if (!targetVideoUrl) {
-        throw new Error('No video source found to export.');
-      }
+      if (!targetVideoUrl) throw new Error('No video source found to export.');
 
       setStatusText('Downloading media into memory...');
-      
       await ffmpeg.writeFile('input.mp4', await fetchFile(targetVideoUrl));
 
       let hasAudio = false;
@@ -108,121 +94,89 @@ export function VideoExporter({
         try {
           await ffmpeg.writeFile('audio.mp3', await fetchFile(audioTrackUrl));
           hasAudio = true;
-        } catch (e) {
-          console.warn('Failed to load custom audio track:', e);
+        } catch (audioError) {
+          console.warn('Failed to load narration track:', audioError);
         }
       }
 
       let hasSubtitles = false;
       if (subtitles.length > 0) {
-        const assContent = generateAssContent(subtitles);
-        await ffmpeg.writeFile('subtitles.ass', new TextEncoder().encode(assContent));
-        await ffmpeg.writeFile(
-          'NotoSansMyanmar-Regular.ttf',
-          await fetchFile(`${import.meta.env.BASE_URL}fonts/NotoSansMyanmar-Regular.ttf`),
-        );
+        await ffmpeg.writeFile('subtitles.ass', new TextEncoder().encode(generateAssContent(subtitles)));
+        await ffmpeg.writeFile('NotoSansMyanmar-Regular.ttf', await fetchFile(`${import.meta.env.BASE_URL}fonts/NotoSansMyanmar-Regular.ttf`));
         hasSubtitles = true;
       }
+
       let hasLogo = false;
       if (logoSettings?.url) {
         await ffmpeg.writeFile('logo.png', await fetchFile(logoSettings.url));
         hasLogo = true;
       }
 
-      setStatusText('Merging audio, video & subtitles...');
+      const filters: string[] = [];
+      let videoLabel = '[0:v]';
+      if (hasSubtitles) {
+        filters.push(`${videoLabel}ass=subtitles.ass:fontsdir=.[captioned]`);
+        videoLabel = '[captioned]';
+      }
+      if (hasLogo) {
+        // Preview positions are the logo centre; convert to a top-left overlay position.
+        const logoWidth = Math.max(32, Math.round(((logoSettings?.size || 12) / 100) * 1280));
+        const logoX = Math.max(0, Math.round(((logoSettings?.x || 88) / 100) * 1280 - logoWidth / 2));
+        const logoY = Math.max(0, Math.round(((logoSettings?.y || 8) / 100) * 720 - logoWidth / 2));
+        const opacity = Math.max(0.2, Math.min(1, (logoSettings?.opacity || 100) / 100));
+        const logoInputIndex = hasAudio ? 2 : 1;
+        filters.push(`[${logoInputIndex}:v]scale=${logoWidth}:-1,format=rgba,colorchannelmixer=aa=${opacity}[logo]`);
+        filters.push(`${videoLabel}[logo]overlay=${logoX}:${logoY}:eof_action=repeat:format=auto[vout]`);
+        videoLabel = '[vout]';
+      }
 
-      let args: string[] = [];
-      const subtitleFilter = 'ass=subtitles.ass:fontsdir=.';
-      const logoX = Math.round(((logoSettings?.x || 88) / 100) * 1280);
-      const logoY = Math.round(((logoSettings?.y || 8) / 100) * 720);
-      const logoWidth = Math.round(((logoSettings?.size || 12) / 100) * 1280);
-
-      if (hasAudio && hasSubtitles) {
-        args = [
-          '-i', 'input.mp4',
-          '-i', 'audio.mp3',
-          ...(hasLogo ? ['-i', 'logo.png'] : []),
-          '-filter_complex', hasLogo
-            ? `[0:v]${subtitleFilter}[captioned];[2:v]scale=${logoWidth}:-1,format=rgba,colorchannelmixer=aa=${(logoSettings?.opacity || 100) / 100}[logo];[captioned][logo]overlay=${logoX}:${logoY}[v]`
-            : `[0:v]${subtitleFilter}[v]`,
-          '-map', '[v]',
-          '-map', '1:a',
-          '-c:v', 'libx264',
-          '-preset', 'ultrafast',
-          '-c:a', 'aac',
-          '-shortest',
-          'output.mp4'
-        ];
-      } else if (hasAudio && !hasSubtitles) {
-        args = [
-          '-i', 'input.mp4',
-          '-i', 'audio.mp3',
-          ...(hasLogo ? ['-i', 'logo.png', '-filter_complex', `[0:v][2:v]overlay=${logoX}:${logoY}[v]`, '-map', '[v]'] : ['-map', '0:v']),
-          '-map', '1:a',
-          '-c:v', 'copy',
-          '-c:a', 'aac',
-          '-shortest',
-          'output.mp4'
-        ];
-      } else if (!hasAudio && hasSubtitles) {
-        args = [
-          '-i', 'input.mp4',
-          ...(hasLogo ? ['-i', 'logo.png', '-filter_complex', `[0:v]${subtitleFilter}[captioned];[1:v]scale=${logoWidth}:-1,format=rgba,colorchannelmixer=aa=${(logoSettings?.opacity || 100) / 100}[logo];[captioned][logo]overlay=${logoX}:${logoY}[v]`, '-map', '[v]'] : ['-vf', subtitleFilter]),
-          '-c:v', 'libx264',
-          '-preset', 'ultrafast',
-          '-c:a', 'copy',
-          'output.mp4'
-        ];
+      const args: string[] = ['-i', 'input.mp4'];
+      if (hasAudio) args.push('-i', 'audio.mp3');
+      if (hasLogo) args.push('-loop', '1', '-i', 'logo.png');
+      if (filters.length > 0) {
+        args.push('-filter_complex', filters.join(';'), '-map', videoLabel);
       } else {
-        args = hasLogo
-          ? ['-i', 'input.mp4', '-i', 'logo.png', '-filter_complex', `[0:v][1:v]overlay=${logoX}:${logoY}[v]`, '-map', '[v]', '-map', '0:a?', '-c:v', 'libx264', '-preset', 'ultrafast', 'output.mp4']
-          : ['-i', 'input.mp4', '-c', 'copy', 'output.mp4'];
+        args.push('-map', '0:v');
       }
+      args.push('-map', hasAudio ? '1:a' : '0:a?');
+      args.push('-c:v', filters.length > 0 ? 'libx264' : 'copy');
+      if (filters.length > 0) args.push('-preset', 'ultrafast');
+      if (hasAudio) args.push('-c:a', 'aac');
+      else if (filters.length > 0) args.push('-c:a', 'copy');
+      args.push('-shortest', 'output.mp4');
 
+      setStatusText('Rendering football news video...');
       let exitCode = await ffmpeg.exec(args);
-      if (exitCode !== 0) {
-        throw new Error(`FFmpeg could not create the output video (exit code ${exitCode}).`);
-      }
+      if (exitCode !== 0) throw new Error(`FFmpeg could not create the output video (exit code ${exitCode}).`);
 
       let outputFile = 'output.mp4';
       if (outputSize !== 'original') {
         const dimensions = outputSize === 'youtube' ? '1280:720' : '720:1280';
         setStatusText(`Preparing ${outputSize === 'youtube' ? 'YouTube' : 'TikTok'} video...`);
         exitCode = await ffmpeg.exec([
-          '-i', 'output.mp4',
-          '-vf', `scale=${dimensions}:force_original_aspect_ratio=decrease,pad=${dimensions}:(ow-iw)/2:(oh-ih)/2:color=black`,
-          '-c:v', 'libx264',
-          '-preset', 'ultrafast',
-          '-c:a', 'copy',
-          'resized.mp4',
+          '-i', 'output.mp4', '-vf', `scale=${dimensions}:force_original_aspect_ratio=decrease,pad=${dimensions}:(ow-iw)/2:(oh-ih)/2:color=black`,
+          '-c:v', 'libx264', '-preset', 'ultrafast', '-c:a', 'copy', 'resized.mp4',
         ]);
-        if (exitCode !== 0) {
-          throw new Error(`Could not resize video for ${outputSize === 'youtube' ? 'YouTube' : 'TikTok'} (exit code ${exitCode}).`);
-        }
+        if (exitCode !== 0) throw new Error(`Could not resize video (exit code ${exitCode}).`);
         outputFile = 'resized.mp4';
       }
 
       setStatusText('Preparing download...');
-      
       const data = await ffmpeg.readFile(outputFile);
-      const blob = new Blob([data], { type: 'video/mp4' });
-
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${safeTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.mp4`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      const url = URL.createObjectURL(new Blob([data], { type: 'video/mp4' }));
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `${safeTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.mp4`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
       URL.revokeObjectURL(url);
-
       setDone(true);
-      ffmpeg.terminate();
     } catch (err: unknown) {
       console.error('Video export failed:', err);
-      const message = err instanceof Error ? err.message : String(err);
-      setError(message || 'Video export failed. Please try again.');
+      setError(err instanceof Error ? err.message : 'Video export failed. Please try again.');
     } finally {
+      ffmpeg?.terminate();
       setExporting(false);
       setStatusText('');
     }
@@ -230,61 +184,12 @@ export function VideoExporter({
 
   return (
     <div className="space-y-3">
-      <h3 className="text-sm font-semibold text-slate-700">Export Video (Fast Render)</h3>
-
-      {exporting && (
-        <div className="flex items-center gap-3 rounded-xl border border-primary-200 bg-primary-50 p-4">
-          <Loader2 className="h-5 w-5 animate-spin text-primary-600 flex-shrink-0" />
-          <div className="text-sm text-primary-700 font-medium truncate">
-            {statusText}
-          </div>
-        </div>
-      )}
-
-      {error && (
-        <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-          <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0" />
-          <span>{error}</span>
-        </div>
-      )}
-
-      {done && !error && (
-        <div className="flex items-start gap-3 rounded-xl border border-primary-200 bg-primary-50 px-4 py-3 text-sm text-primary-700">
-          <Download className="mt-0.5 h-5 w-5 flex-shrink-0" />
-          <span>Export completed successfully in MP4 format with audio & subtitles for "{safeTitle}".</span>
-        </div>
-      )}
-
-      <label className="block max-w-xs space-y-1">
-        <span className="text-xs font-medium text-slate-500">Video size</span>
-        <select
-          value={outputSize}
-          onChange={(event) => setOutputSize(event.target.value as 'original' | 'youtube' | 'tiktok')}
-          disabled={exporting}
-          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"
-        >
-          <option value="original">Original size</option>
-          <option value="youtube">YouTube — 16:9 (1280×720)</option>
-          <option value="tiktok">TikTok — 9:16 (720×1280)</option>
-        </select>
-      </label>
-
-      <Button
-        size="lg"
-        onClick={handleFFmpegExport}
-        disabled={exporting || disabled}
-        className="w-full sm:w-auto"
-      >
-        {exporting ? (
-          <>
-            <Loader2 className="h-5 w-5 animate-spin" /> Processing Fast...
-          </>
-        ) : (
-          <>
-            <Zap className="h-5 w-5 text-amber-300" /> Export MP4 (Fast Render)
-          </>
-        )}
-      </Button>
+      <h3 className="text-sm font-semibold text-slate-700">Export Football News Video</h3>
+      {exporting && <div className="flex items-center gap-3 rounded-xl border border-primary-200 bg-primary-50 p-4"><Loader2 className="h-5 w-5 animate-spin text-primary-600" /><div className="text-sm font-medium text-primary-700 truncate">{statusText}</div></div>}
+      {error && <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700"><AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0" /><span>{error}</span></div>}
+      {done && !error && <div className="flex items-start gap-3 rounded-xl border border-primary-200 bg-primary-50 px-4 py-3 text-sm text-primary-700"><Download className="mt-0.5 h-5 w-5 flex-shrink-0" /><span>Football news video exported successfully with logo, audio and subtitles.</span></div>}
+      <label className="block max-w-xs space-y-1"><span className="text-xs font-medium text-slate-500">Video size</span><select value={outputSize} onChange={(event) => setOutputSize(event.target.value as 'original' | 'youtube' | 'tiktok')} disabled={exporting} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"><option value="original">Original size</option><option value="youtube">YouTube — 16:9 (1280×720)</option><option value="tiktok">TikTok — 9:16 (720×1280)</option></select></label>
+      <Button size="lg" onClick={handleFFmpegExport} disabled={exporting || disabled} className="w-full sm:w-auto">{exporting ? <><Loader2 className="h-5 w-5 animate-spin" /> Processing...</> : <><Zap className="h-5 w-5 text-amber-300" /> Export MP4</>}</Button>
     </div>
   );
 }

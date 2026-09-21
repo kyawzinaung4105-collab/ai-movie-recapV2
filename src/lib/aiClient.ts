@@ -145,19 +145,19 @@ export async function analyzeVideoAndGenerateScript(
 ): Promise<TranslationResult> {
   const systemPrompt =
     'You are a professional video analyst and translator. ' +
-    'You analyze video content, identify the movie/show title, ' +
+    'You analyze football video content, identify the match, teams, competition or news topic, ' +
     'transcribe the dialogue, and translate it into natural ' +
     (language === 'myanmar' ? 'Burmese (Myanmar) language' : 'English') +
     '. You return results as JSON only.';
 
   const prompt = `Analyze this video and provide:
-1. The movie or show title (best guess)
+1. A concise football news headline or match title (best guess)
 2. A complete transcription of all dialogue/voiceover
 3. A ${language === 'myanmar' ? 'Burmese' : 'English'} translation of the dialogue
 
 Return ONLY valid JSON in this exact format:
 {
-  "movieTitle": "the title",
+  "movieTitle": "the football news headline",
   "titleConfident": true,
   "segments": [
     { "start": 0.0, "end": 5.0, "text": "translated dialogue segment" },
@@ -170,7 +170,7 @@ Rules:
 - "text" must be the ${language === 'myanmar' ? 'Burmese' : 'English'} translation
 - Use natural, fluent ${language === 'myanmar' ? 'Burmese' : 'English'}
 - Cover the entire video duration
-- If you cannot identify the title, use "Unknown Video" and set titleConfident to false`;
+- If you cannot identify the match or news topic, use "Football News" and set titleConfident to false`;
 
   const raw = await aiGenerate(prompt, systemPrompt, videoBase64);
 
@@ -189,7 +189,7 @@ Rules:
       end: Number(s.end) || (i + 1) * 5,
       text: String(s.text || ''),
     })),
-    movieTitle: String(parsed.movieTitle || 'Unknown Video'),
+    movieTitle: String(parsed.movieTitle || 'Football News'),
     titleConfident: Boolean(parsed.titleConfident),
   };
 }
@@ -210,7 +210,7 @@ export async function detectMovieTitle(
   videoBase64: { mimeType: string; data: string }
 ): Promise<{ title: string; confident: boolean }> {
   const prompt =
-    'What movie or show is this video from? Return ONLY JSON: {"title": "the title", "confident": true/false}';
+    'What football match, teams, competition, or news topic is shown in this video? Return ONLY JSON: {"title": "the title", "confident": true/false}';
 
   const raw = await aiGenerate(prompt, undefined, videoBase64);
 
@@ -218,10 +218,10 @@ export async function detectMovieTitle(
     const jsonMatch = raw.match(/\{[\s\S]*}/);
     const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : raw);
     return {
-      title: String(parsed.title || 'Unknown Video'),
+      title: String(parsed.title || 'Football News'),
       confident: Boolean(parsed.confident),
     };
   } catch {
-    return { title: 'Unknown Video', confident: false };
+    return { title: 'Football News', confident: false };
   }
 }
