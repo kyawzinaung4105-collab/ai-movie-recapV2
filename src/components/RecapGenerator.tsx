@@ -88,7 +88,7 @@ export function RecapGenerator({ onOpenSettings }: RecapGeneratorProps) {
     <div className="space-y-6 animate-fade-in">
       <div className="text-center">
         <h2 className="text-xl font-bold text-slate-900">Generate Football News</h2>
-        <p className="text-sm text-slate-500 mt-1">Review your settings and generate</p>
+        <p className="text-sm text-slate-500 mt-1">Review your settings and generate the timestamped football transcript</p>
       </div>
 
       <div className="max-w-md mx-auto space-y-3">

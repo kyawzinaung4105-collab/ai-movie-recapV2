@@ -19,7 +19,7 @@ export function LanguageSelector({ language, onSelect, onContinue, onBack }: Lan
     <div className="space-y-6 animate-fade-in">
       <div className="text-center">
         <h2 className="text-xl font-bold text-slate-900">Select Language</h2>
-        <p className="text-sm text-slate-500 mt-1">Choose the narration language</p>
+        <p className="text-sm text-slate-500 mt-1">Choose Burmese for automatic dubbing, or English to translate the transcript manually</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-lg mx-auto">

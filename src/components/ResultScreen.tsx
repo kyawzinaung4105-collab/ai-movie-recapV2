@@ -7,6 +7,7 @@ import { CaptionEditor } from '@/components/CaptionEditor';
 import { FinalPreview } from '@/components/FinalPreview';
 import { VideoExporter } from '@/components/VideoExporter';
 import { CustomAudioUpload } from '@/components/CustomAudioUpload';
+import { TranslationEditor } from '@/components/TranslationEditor';
 import { Button } from '@/components/ui/Button';
 
 export function ResultScreen() {
@@ -20,6 +21,7 @@ export function ResultScreen() {
     captionSettings,
     setCaptionSettings,
     language,
+    voiceId,
     customAudioUrl,
     setCustomAudioUrl,
     customCues,
@@ -82,6 +84,15 @@ export function ResultScreen() {
         onCaptionChange={setCaptionSettings}
         onLogoChange={setLogoSettings}
       />
+
+      {language === 'english' && generationResult && (
+        <TranslationEditor
+          sourceCues={generationResult.cues || []}
+          voiceId={voiceId}
+          onTranslationApplied={setCustomCues}
+          onAudioGenerated={setCustomAudioUrl}
+        />
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <BlurEditor
