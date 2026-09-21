@@ -63,7 +63,7 @@ export function ResultScreen() {
           <p className="mt-1 text-sm text-slate-500">Review your video, Burmese subtitles, logo, and export settings.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={() => setStep('voice')}>Back to Voice</Button>
+          <Button variant="secondary" size="sm" onClick={() => setStep('voice')}>Back to Voice</Button>
           <Button variant="ghost" size="sm" onClick={resetAll}><RotateCcw className="h-4 w-4" /> Start New</Button>
         </div>
       </div>

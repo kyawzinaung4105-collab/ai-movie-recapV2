@@ -68,7 +68,7 @@ export function VoiceSelector({ language, voiceId, onSelect, onContinue, onBack 
       </div>
 
       <div className="flex items-center justify-between border-t border-slate-200 pt-5">
-        <Button variant="ghost" onClick={onBack}><ArrowLeft className="h-4 w-4" /> Back to Source Text</Button>
+        <Button variant="secondary" onClick={onBack}><ArrowLeft className="h-4 w-4" /> Back to Source Text</Button>
         <Button size="lg" onClick={onContinue} disabled={!voiceId}>Continue to Result <ArrowRight className="h-5 w-5" /></Button>
       </div>
     </div>

@@ -59,7 +59,7 @@ function AppContent() {
           <div className="mx-auto max-w-4xl space-y-5">
             <VideoUpload onVideoSelected={handleVideoSelected} />
             <div className="flex items-center justify-between border-t border-slate-200 pt-4">
-              <Button variant="ghost" onClick={() => setInputMethod(null)}><ArrowLeft className="h-4 w-4" /> Back</Button>
+              <Button variant="secondary" onClick={() => setInputMethod(null)}><ArrowLeft className="h-4 w-4" /> Back to Upload Options</Button>
               {videoSource && <Button size="lg" onClick={() => setStep('recap-select')}>Get Source Text</Button>}
             </div>
           </div>
@@ -69,7 +69,7 @@ function AppContent() {
           <div className="mx-auto max-w-4xl space-y-5">
             <VideoLinkInput onVideoLoaded={handleVideoLoaded} />
             <div className="flex items-center justify-between border-t border-slate-200 pt-4">
-              <Button variant="ghost" onClick={() => setInputMethod(null)}><ArrowLeft className="h-4 w-4" /> Back</Button>
+              <Button variant="secondary" onClick={() => setInputMethod(null)}><ArrowLeft className="h-4 w-4" /> Back to Upload Options</Button>
               {videoSource && <Button size="lg" onClick={() => setStep('recap-select')}>Get Source Text</Button>}
             </div>
           </div>

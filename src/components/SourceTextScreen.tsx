@@ -82,7 +82,7 @@ export function SourceTextScreen({ onContinue, onBack }: SourceTextScreenProps) 
       </div>
 
       <div className="flex items-center justify-between border-t border-slate-200 pt-5">
-        <Button variant="ghost" onClick={onBack}><ArrowLeft className="h-4 w-4" /> Back to Upload</Button>
+        <Button variant="secondary" onClick={onBack}><ArrowLeft className="h-4 w-4" /> Back to Upload</Button>
         <Button size="lg" onClick={onContinue}>Continue to Voice <ArrowRight className="h-5 w-5" /></Button>
       </div>
     </div>
