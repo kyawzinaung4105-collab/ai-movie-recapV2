@@ -26,13 +26,18 @@ async function readError(response: Response): Promise<string> {
 }
 
 async function assemblyFetch(path: string, init: RequestInit, apiKey: string): Promise<Response> {
-  const response = await fetch(`https://api.assemblyai.com${path}`, {
-    ...init,
-    headers: {
-      authorization: apiKey,
-      ...(init.headers || {}),
-    },
-  });
+  let response: Response;
+  try {
+    response = await fetch(`https://api.assemblyai.com${path}`, {
+      ...init,
+      headers: {
+        authorization: apiKey,
+        ...(init.headers || {}),
+      },
+    });
+  } catch {
+    throw new Error(`AssemblyAI ကို ဆက်သွယ်မရပါ (${path})။ Internet, API key, သို့မဟုတ် browser CORS ပြဿနာ ဖြစ်နိုင်ပါတယ်။`);
+  }
   if (!response.ok) throw new Error(`AssemblyAI error ${response.status}: ${await readError(response)}`);
   return response;
 }
@@ -68,7 +73,12 @@ export async function transcribeVideoWithAssemblyAI(videoUrl: string, onStatus?:
   if (!apiKey) throw new Error('AssemblyAI API Key မရှိသေးပါ။ Settings မှာ key ထည့်ပါ။');
 
   onStatus?.('Uploading video audio to AssemblyAI...');
-  const media = await fetch(videoUrl);
+  let media: Response;
+  try {
+    media = await fetch(videoUrl);
+  } catch {
+    throw new Error('Video file ကို browser မှ ဖတ်မရပါ။ Video ကို ပြန်ရွေးပြီး Transcribe ကို ထပ်နှိပ်ပါ။');
+  }
   if (!media.ok) throw new Error('Uploaded video ကို ဖတ်မရပါ။');
   const upload = await assemblyFetch('/v2/upload', { method: 'POST', body: await media.blob() }, apiKey);
   const { upload_url: uploadUrl } = await upload.json() as { upload_url?: string };
