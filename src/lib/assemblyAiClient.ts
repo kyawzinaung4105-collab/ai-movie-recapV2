@@ -127,9 +127,26 @@ async function transcribeThroughLocalProxy(videoUrl: string | undefined, apiKey:
     form.append('video', await media.blob(), 'video.mp4');
   }
   const onlineProxy = '/api/assemblyai/transcribe';
-  const response = await fetch(onlineProxy, { method: 'POST', body: form });
-  const payload = await response.json() as { cues?: CaptionCue[]; jobId?: string; error?: string };
-  if (!response.ok || (!payload.cues && !payload.jobId)) throw new Error(payload.error || 'Online AssemblyAI proxy မရပါ။');
+  const payload = await new Promise<{ cues?: CaptionCue[]; jobId?: string; error?: string }>((resolve, reject) => {
+    const request = new XMLHttpRequest();
+    request.open('POST', onlineProxy);
+    request.timeout = 120000;
+    request.upload.onprogress = (event) => {
+      if (event.lengthComputable) onStatus?.(`Video ကို upload လုပ်နေပါတယ်... ${Math.round((event.loaded / event.total) * 100)}%`);
+    };
+    request.onerror = () => reject(new Error('Video upload မအောင်မြင်ပါ။ Internet connection ကို စစ်ပြီး ပြန်စမ်းပါ။'));
+    request.ontimeout = () => reject(new Error('Video upload အချိန်ကျော်သွားပါတယ်။ Video file သေးသေးနဲ့ ပြန်စမ်းပါ။'));
+    request.onload = () => {
+      let result: { cues?: CaptionCue[]; jobId?: string; error?: string } = {};
+      try { result = JSON.parse(request.responseText) as typeof result; } catch { /* handled below */ }
+      if (request.status < 200 || request.status >= 300 || (!result.cues && !result.jobId)) {
+        reject(new Error(result.error || `AssemblyAI proxy error (${request.status}).`));
+        return;
+      }
+      resolve(result);
+    };
+    request.send(form);
+  });
   if (payload.cues) return payload.cues;
   onStatus?.('AssemblyAI က audio ကို စစ်ဆေးနေပါတယ်... 0%');
   for (let attempt = 0; attempt < 120; attempt += 1) {
