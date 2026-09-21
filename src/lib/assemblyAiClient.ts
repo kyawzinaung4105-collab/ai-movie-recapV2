@@ -68,7 +68,7 @@ function wordsToCues(words: AssemblyWord[]): CaptionCue[] {
   return cues;
 }
 
-export async function transcribeVideoWithAssemblyAI(videoUrl: string, onStatus?: (message: string) => void): Promise<CaptionCue[]> {
+async function transcribeDirectly(videoUrl: string, onStatus?: (message: string) => void): Promise<CaptionCue[]> {
   const apiKey = loadApiKeys().assemblyAiKey;
   if (!apiKey) throw new Error('AssemblyAI API Key မရှိသေးပါ။ Settings မှာ key ထည့်ပါ။');
 
@@ -107,4 +107,32 @@ export async function transcribeVideoWithAssemblyAI(videoUrl: string, onStatus?:
     onStatus?.(`Transcribing... ${Math.round(((attempt + 1) / 120) * 100)}%`);
   }
   throw new Error('AssemblyAI transcription timeout ဖြစ်သွားပါတယ်။');
+}
+
+async function transcribeThroughLocalProxy(videoUrl: string, apiKey: string, onStatus?: (message: string) => void): Promise<CaptionCue[]> {
+  onStatus?.('Local AssemblyAI proxy ကို စမ်းနေပါတယ်...');
+  const media = await fetch(videoUrl);
+  if (!media.ok) throw new Error('Video file ကို local proxy ဆီပို့မရပါ။');
+  const form = new FormData();
+  form.append('apiKey', apiKey);
+  form.append('video', await media.blob(), 'video.mp4');
+  const response = await fetch('http://127.0.0.1:8787/api/transcribe', { method: 'POST', body: form });
+  const payload = await response.json() as { cues?: CaptionCue[]; error?: string };
+  if (!response.ok || !payload.cues) throw new Error(payload.error || 'Local AssemblyAI proxy မရပါ။');
+  return payload.cues;
+}
+
+export async function transcribeVideoWithAssemblyAI(videoUrl: string, onStatus?: (message: string) => void): Promise<CaptionCue[]> {
+  try {
+    return await transcribeDirectly(videoUrl, onStatus);
+  } catch (directError) {
+    try {
+      const apiKey = loadApiKeys().assemblyAiKey;
+      return await transcribeThroughLocalProxy(videoUrl, apiKey, onStatus);
+    } catch (proxyError) {
+      const directMessage = directError instanceof Error ? directError.message : 'AssemblyAI direct request failed.';
+      const proxyMessage = proxyError instanceof Error ? proxyError.message : 'Local proxy is not running.';
+      throw new Error(`${directMessage}\n\nLocal proxy fallback: ${proxyMessage}\nPython backend မစရသေးရင် backend/start_assemblyai_proxy.bat ကို run လုပ်ပါ။`);
+    }
+  }
 }
