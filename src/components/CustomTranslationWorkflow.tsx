@@ -154,7 +154,7 @@ export function CustomTranslationWorkflow({ duration, videoUrl, videoFile, onTra
           </div>
         </div>
         <textarea value={englishTranscript} onChange={(event) => { setEnglishTranscript(event.target.value); setSourceCues([]); setApplied(false); setError(''); }} rows={7} placeholder="English transcript text will appear here..." className="w-full resize-y rounded-xl border border-indigo-300 px-3 py-3 text-sm leading-6 text-slate-800 focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-100" />
-        {transcriptionStatus && <p className="text-xs text-indigo-700">{transcriptionStatus}</p>}
+        {(transcriptionStatus || transcribing) && <p className="rounded-lg bg-indigo-50 px-3 py-2 text-xs font-medium text-indigo-700">{transcriptionStatus || 'Transcribing... 0%'}</p>}
       </div>
 
       <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-4">

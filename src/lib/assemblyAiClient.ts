@@ -110,7 +110,7 @@ async function transcribeDirectly(videoUrl: string, onStatus?: (message: string)
 }
 
 async function transcribeThroughLocalProxy(videoUrl: string | undefined, apiKey: string, onStatus?: (message: string) => void, videoFile?: File): Promise<CaptionCue[]> {
-  onStatus?.('Online AssemblyAI proxy ကို စမ်းနေပါတယ်...');
+  onStatus?.('Video ကို AssemblyAI သို့ upload လုပ်နေပါတယ်...');
   const form = new FormData();
   form.append('apiKey', apiKey);
   if (videoFile) {
@@ -131,9 +131,10 @@ async function transcribeThroughLocalProxy(videoUrl: string | undefined, apiKey:
   const payload = await response.json() as { cues?: CaptionCue[]; jobId?: string; error?: string };
   if (!response.ok || (!payload.cues && !payload.jobId)) throw new Error(payload.error || 'Online AssemblyAI proxy မရပါ။');
   if (payload.cues) return payload.cues;
+  onStatus?.('AssemblyAI က audio ကို စစ်ဆေးနေပါတယ်... 0%');
   for (let attempt = 0; attempt < 120; attempt += 1) {
     await new Promise((resolve) => window.setTimeout(resolve, 2500));
-    onStatus?.(`Online transcription... ${Math.round(((attempt + 1) / 120) * 100)}%`);
+    onStatus?.(`Transcribing... ${Math.min(99, Math.round(((attempt + 1) / 120) * 100))}%`);
     const statusResponse = await fetch(`${onlineProxy}/${payload.jobId}?apiKey=${encodeURIComponent(apiKey)}`);
     const status = await statusResponse.json() as { status?: string; cues?: CaptionCue[]; error?: string };
     if (status.status === 'completed' && status.cues) return status.cues;
