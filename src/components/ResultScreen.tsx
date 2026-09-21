@@ -49,11 +49,15 @@ export function ResultScreen() {
     : (generationResult?.cues || captionSettings.cues);
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-slate-900">
+    <div className="mx-auto max-w-5xl space-y-10 animate-fade-in">
+      <div className="flex flex-col gap-4 border-b border-slate-200 pb-6 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary-600">Football News Studio</p>
+          <h2 className="mt-1 text-2xl font-bold text-slate-900">
           {isCustomMode ? 'Custom Audio & Subtitles' : 'Generated Result'}
-        </h2>
+          </h2>
+          <p className="mt-1 text-sm text-slate-500">Review your video, Burmese subtitles, logo, and export settings.</p>
+        </div>
         <Button variant="ghost" size="sm" onClick={resetAll}>
           <RotateCcw className="h-4 w-4" /> Start New
         </Button>
@@ -67,24 +71,28 @@ export function ResultScreen() {
         </div>
       )}
 
-      <MovieTitleEditor
-        title={movieTitle}
-        titleConfident={generationResult?.titleConfident}
-        onChange={setMovieTitle}
-      />
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <MovieTitleEditor
+          title={movieTitle}
+          titleConfident={generationResult?.titleConfident}
+          onChange={setMovieTitle}
+        />
+      </section>
 
-      <FinalPreview
-        videoSource={videoSource}
-        blurSettings={blurSettings}
-        captionSettings={captionSettings}
-        movieTitle={movieTitle}
-        generationResult={generationResult}
-        customAudioUrl={customAudioUrl}
-        customCues={customCues}
-        logoSettings={logoSettings}
-        onCaptionChange={setCaptionSettings}
-        onLogoChange={setLogoSettings}
-      />
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <FinalPreview
+          videoSource={videoSource}
+          blurSettings={blurSettings}
+          captionSettings={captionSettings}
+          movieTitle={movieTitle}
+          generationResult={generationResult}
+          customAudioUrl={customAudioUrl}
+          customCues={customCues}
+          logoSettings={logoSettings}
+          onCaptionChange={setCaptionSettings}
+          onLogoChange={setLogoSettings}
+        />
+      </section>
 
       {isCustomMode && (
         <CustomTranslationWorkflow
@@ -103,7 +111,7 @@ export function ResultScreen() {
         />
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
         <BlurEditor
           settings={blurSettings}
           onChange={setBlurSettings}
@@ -118,22 +126,26 @@ export function ResultScreen() {
         />
       </div>
 
-      <CustomAudioUpload
-        onAudioLoaded={setCustomAudioUrl}
-        onCuesLoaded={setCustomCues}
-        currentAudioUrl={customAudioUrl}
-        currentCues={customCues}
-      />
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <CustomAudioUpload
+          onAudioLoaded={setCustomAudioUrl}
+          onCuesLoaded={setCustomCues}
+          currentAudioUrl={customAudioUrl}
+          currentCues={customCues}
+        />
+      </section>
 
-      <VideoExporter
-        movieTitle={movieTitle}
-        videoBlobUrl={exportVideoUrl}
-        audioTrackUrl={exportAudioUrl}
-        subtitles={exportSubtitles}
-        captionStyle={captionSettings.style}
-        logoSettings={logoSettings}
-        disabled={!exportVideoUrl}
-      />
+      <section className="rounded-2xl border border-primary-200 bg-primary-50/40 p-5 shadow-sm sm:p-6">
+        <VideoExporter
+          movieTitle={movieTitle}
+          videoBlobUrl={exportVideoUrl}
+          audioTrackUrl={exportAudioUrl}
+          subtitles={exportSubtitles}
+          captionStyle={captionSettings.style}
+          logoSettings={logoSettings}
+          disabled={!exportVideoUrl}
+        />
+      </section>
       {!exportVideoUrl && (
         <p className="text-sm text-slate-500">
           MP4 export is available for uploaded video files. Embedded video links cannot be downloaded by the browser.

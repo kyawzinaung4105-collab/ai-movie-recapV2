@@ -27,6 +27,7 @@ html {
 body {
   background-color: var(--color-background);
   color: var(--color-text);
+  line-height: 1.5;
 }
 
 .font-myanmar {
@@ -53,7 +54,7 @@ input[type='range']::-webkit-slider-thumb {
   height: 16px;
   width: 16px;
   border-radius: 50%;
-  background: #16a34a;
+  background: #0f766e;
 }
 
 input[type='range']::-moz-range-track {
@@ -67,7 +68,7 @@ input[type='range']::-moz-range-thumb {
   width: 16px;
   border: none;
   border-radius: 50%;
-  background: #16a34a;
+  background: #0f766e;
 }
 
 @keyframes fadeIn {
@@ -92,4 +93,9 @@ input[type='range']::-moz-range-thumb {
 /* Football newsroom visual language */
 .newsroom-accent {
   background: linear-gradient(135deg, #0f172a 0%, #115e59 55%, #f59e0b 100%);
+}
+
+::selection {
+  background: #99f6e4;
+  color: #134e4a;
 }

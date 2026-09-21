@@ -55,7 +55,7 @@ function AppContent() {
       />
 
       <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/80 backdrop-blur-md">
-        <div className="mx-auto max-w-4xl px-4 py-3">
+        <div className="mx-auto max-w-6xl px-4 py-4 sm:px-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg newsroom-accent text-white">
@@ -90,8 +90,8 @@ function AppContent() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-4xl px-4 py-6">
-        {step !== 'result' && <div className="mb-6"><StepIndicator currentStep={step} /></div>}
+      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:py-10">
+        <div className="mb-8"><StepIndicator currentStep={step} /></div>
 
         {step === 'input' && !inputMethod && (
           <VideoInput onSelect={(method) => setInputMethod(method)} />
@@ -167,7 +167,7 @@ function AppContent() {
       </main>
 
       <footer className="border-t border-slate-200 bg-white">
-        <div className="mx-auto max-w-4xl px-4 py-3 text-center text-xs text-slate-400">
+        <div className="mx-auto max-w-6xl px-4 py-4 text-center text-xs text-slate-400 sm:px-6">
           AI Football News Studio
         </div>
       </footer>
