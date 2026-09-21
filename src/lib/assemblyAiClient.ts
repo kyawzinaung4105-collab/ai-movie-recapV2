@@ -39,21 +39,34 @@ async function readError(response: Response): Promise<string> {
   }
 }
 
+async function waitForNetwork(): Promise<void> {
+  if (navigator.onLine) return;
+  await new Promise<void>((resolve) => {
+    window.addEventListener('online', () => resolve(), { once: true });
+  });
+}
+
 async function assemblyFetch(path: string, init: RequestInit, apiKey: string): Promise<Response> {
-  let response: Response;
-  try {
-    response = await fetch(`https://api.assemblyai.com${path}`, {
-      ...init,
-      headers: {
-        authorization: apiKey,
-        ...(init.headers || {}),
-      },
-    });
-  } catch {
-    throw new Error(`AssemblyAI ကို ဆက်သွယ်မရပါ (${path})။ Internet, API key, သို့မဟုတ် browser CORS ပြဿနာ ဖြစ်နိုင်ပါတယ်။`);
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    await waitForNetwork();
+    try {
+      return await fetch(`https://api.assemblyai.com${path}`, {
+        ...init,
+        headers: {
+          authorization: apiKey,
+          ...(init.headers || {}),
+        },
+      }).then(async (response) => {
+        if (!response.ok) throw new Error(`AssemblyAI error ${response.status}: ${await readError(response)}`);
+        return response;
+      });
+    } catch (error) {
+      lastError = error;
+      if (attempt < 4) await new Promise((resolve) => window.setTimeout(resolve, 2000 * (attempt + 1)));
+    }
   }
-  if (!response.ok) throw new Error(`AssemblyAI error ${response.status}: ${await readError(response)}`);
-  return response;
+  throw lastError instanceof Error ? lastError : new Error(`AssemblyAI ကို ဆက်သွယ်မရပါ (${path})။ Internet ပြန်ရလာရင် အလိုအလျောက် ပြန်စမ်းပါမယ်။`);
 }
 
 function wordsToCues(words: AssemblyWord[]): CaptionCue[] {

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, Clipboard, FileText, Languages } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import type { CaptionCue } from '@/types';
@@ -31,6 +31,21 @@ export function CustomTranslationWorkflow({ duration, videoUrl, videoFile, onTra
   const [transcribing, setTranscribing] = useState(false);
   const [transcriptionStatus, setTranscriptionStatus] = useState('');
   const [sourceCues, setSourceCues] = useState<CaptionCue[]>([]);
+
+  useEffect(() => {
+    const handleOffline = () => {
+      if (transcribing) setTranscriptionStatus('Internet ခဏပြတ်သွားပါတယ်။ ပြန်ရလာရင် အလိုအလျောက် ဆက်လုပ်ပါမယ်...');
+    };
+    const handleOnline = () => {
+      if (transcribing) setTranscriptionStatus('Internet ပြန်ရပါပြီ။ ဆက်လုပ်နေပါတယ်...');
+    };
+    window.addEventListener('offline', handleOffline);
+    window.addEventListener('online', handleOnline);
+    return () => {
+      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('online', handleOnline);
+    };
+  }, [transcribing]);
 
   const englishLines = useMemo(() => englishTranscript.split(/\r?\n/).map((line) => line.trim()).filter(Boolean), [englishTranscript]);
   const numberedTranscript = useMemo(() => englishLines.map((line, index) => `[${index + 1}] ${line}`).join('\n'), [englishLines]);
