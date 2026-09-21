@@ -110,15 +110,16 @@ async function transcribeDirectly(videoUrl: string, onStatus?: (message: string)
 }
 
 async function transcribeThroughLocalProxy(videoUrl: string, apiKey: string, onStatus?: (message: string) => void): Promise<CaptionCue[]> {
-  onStatus?.('Local AssemblyAI proxy ကို စမ်းနေပါတယ်...');
+  onStatus?.('Online AssemblyAI proxy ကို စမ်းနေပါတယ်...');
   const media = await fetch(videoUrl);
-  if (!media.ok) throw new Error('Video file ကို local proxy ဆီပို့မရပါ။');
+  if (!media.ok) throw new Error('Video file ကို online proxy ဆီပို့မရပါ။');
   const form = new FormData();
   form.append('apiKey', apiKey);
   form.append('video', await media.blob(), 'video.mp4');
-  const response = await fetch('http://127.0.0.1:8787/api/transcribe', { method: 'POST', body: form });
+  const onlineProxy = 'https://3000-iarmrhy4pa7v7i6d86j2f-8f72b23c.us4.manus.computer/api/assemblyai/transcribe';
+  const response = await fetch(onlineProxy, { method: 'POST', body: form });
   const payload = await response.json() as { cues?: CaptionCue[]; error?: string };
-  if (!response.ok || !payload.cues) throw new Error(payload.error || 'Local AssemblyAI proxy မရပါ။');
+  if (!response.ok || !payload.cues) throw new Error(payload.error || 'Online AssemblyAI proxy မရပါ။');
   return payload.cues;
 }
 
@@ -132,7 +133,7 @@ export async function transcribeVideoWithAssemblyAI(videoUrl: string, onStatus?:
     } catch (proxyError) {
       const directMessage = directError instanceof Error ? directError.message : 'AssemblyAI direct request failed.';
       const proxyMessage = proxyError instanceof Error ? proxyError.message : 'Local proxy is not running.';
-      throw new Error(`${directMessage}\n\nLocal proxy fallback: ${proxyMessage}\nPython backend မစရသေးရင် backend/start_assemblyai_proxy.bat ကို run လုပ်ပါ။`);
+      throw new Error(`${directMessage}\n\nOnline proxy fallback: ${proxyMessage}`);
     }
   }
 }
