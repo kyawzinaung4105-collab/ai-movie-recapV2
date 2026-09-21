@@ -3,6 +3,8 @@ import { Upload, Film, RefreshCw, CheckCircle2 } from 'lucide-react';
 import type { VideoSource } from '@/types';
 import { Button } from '@/components/ui/Button';
 import { formatDuration } from '@/lib/env';
+import { FFmpeg } from '@ffmpeg/ffmpeg';
+import { fetchFile } from '@ffmpeg/util';
 
 interface VideoUploadProps {
   onVideoSelected: (source: VideoSource) => void;
@@ -16,18 +18,40 @@ export function VideoUpload({ onVideoSelected }: VideoUploadProps) {
   const [objectUrl, setObjectUrl] = useState<string>('');
   const [duration, setDuration] = useState<number>(0);
   const [error, setError] = useState<string>('');
+  const [preparing, setPreparing] = useState(false);
+  const [prepareStatus, setPrepareStatus] = useState('');
 
   const handleFile = useCallback(
-    (file: File) => {
+    async (file: File) => {
       if (!file.type.startsWith('video/') && !/\.(mp4|mov|webm|mkv)$/i.test(file.name)) {
         setError('This file format is not supported. Please select an MP4, MOV, or WebM file.');
         return;
       }
       setError('');
       if (objectUrl) URL.revokeObjectURL(objectUrl);
-      const url = URL.createObjectURL(file);
+      let uploadFile = file;
+      if (file.size > 25 * 1024 * 1024) {
+        setPreparing(true);
+        setPrepareStatus('Large video ကို upload မြန်အောင် ချုံ့နေပါတယ်...');
+        try {
+          const ffmpeg = new FFmpeg();
+          const corePath = `${import.meta.env.BASE_URL}ffmpeg/ffmpeg-core`;
+          await ffmpeg.load({ coreURL: `${corePath}.js`, wasmURL: `${corePath}.wasm` });
+          await ffmpeg.writeFile('input.mp4', await fetchFile(file));
+          await ffmpeg.exec(['-i', 'input.mp4', '-vf', 'scale=-2:720:force_original_aspect_ratio=decrease', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '28', '-c:a', 'aac', '-b:a', '96k', '-movflags', '+faststart', 'upload.mp4']);
+          const output = await ffmpeg.readFile('upload.mp4');
+          if (typeof output !== 'string') uploadFile = new File([output], 'video-optimized.mp4', { type: 'video/mp4' });
+          ffmpeg.terminate();
+        } catch (compressionError) {
+          console.warn('Video compression skipped:', compressionError);
+          setPrepareStatus('Compression မအောင်မြင်ပါ။ Original video ဖြင့် ဆက်လုပ်ပါမယ်။');
+        } finally {
+          setPreparing(false);
+        }
+      }
+      const url = URL.createObjectURL(uploadFile);
       setObjectUrl(url);
-      setSelectedFile(file);
+      setSelectedFile(uploadFile);
       setDuration(0);
     },
     [objectUrl]
@@ -35,7 +59,7 @@ export function VideoUpload({ onVideoSelected }: VideoUploadProps) {
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) handleFile(file);
+    if (file) void handleFile(file);
   };
 
   const handleLoadedMetadata = (e: React.SyntheticEvent<HTMLVideoElement>) => {
@@ -79,6 +103,7 @@ export function VideoUpload({ onVideoSelected }: VideoUploadProps) {
         className="hidden"
       />
 
+      {preparing && <div className="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-700">{prepareStatus}</div>}
       {!selectedFile ? (
         <button
           onClick={() => inputRef.current?.click()}

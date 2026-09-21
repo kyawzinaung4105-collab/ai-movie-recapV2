@@ -140,7 +140,7 @@ export function VideoExporter({
       }
       if (hasAudio) args.push('-map', '1:a');
       args.push('-c:v', filters.length > 0 ? 'libx264' : 'copy');
-      if (filters.length > 0) args.push('-preset', 'ultrafast');
+      if (filters.length > 0) args.push('-preset', 'ultrafast', '-crf', '28', '-threads', '0');
       if (hasAudio) args.push('-c:a', 'aac', '-af', 'apad');
       else if (filters.length > 0) args.push('-c:a', 'copy');
       args.push('-shortest', 'output.mp4');
@@ -155,7 +155,7 @@ export function VideoExporter({
         setStatusText(`Preparing ${outputSize === 'youtube' ? 'YouTube' : 'TikTok'} video...`);
         exitCode = await ffmpeg.exec([
           '-i', 'output.mp4', '-vf', `scale=${dimensions}:force_original_aspect_ratio=decrease,pad=${dimensions}:(ow-iw)/2:(oh-ih)/2:color=black`,
-          '-c:v', 'libx264', '-preset', 'ultrafast', '-c:a', 'copy', 'resized.mp4',
+          '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-threads', '0', '-c:a', 'copy', '-movflags', '+faststart', 'resized.mp4',
         ]);
         if (exitCode !== 0) throw new Error(`Could not resize video (exit code ${exitCode}).`);
         outputFile = 'resized.mp4';
