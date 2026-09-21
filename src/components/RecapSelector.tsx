@@ -12,7 +12,7 @@ export function RecapSelector({ onSelect, onCustomSelect, onBack }: RecapSelecto
     <div className="space-y-6 animate-fade-in">
       <div className="text-center">
         <h2 className="text-xl font-bold text-slate-900">What would you like to create?</h2>
-        <p className="text-sm text-slate-500 mt-1">Select a football news format to continue</p>
+        <p className="text-sm text-slate-500 mt-1">Select a movie recap format to continue</p>
       </div>
 
       <div className="max-w-md mx-auto space-y-3">

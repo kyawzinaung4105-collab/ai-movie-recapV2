@@ -36,7 +36,7 @@ export function VideoExporter({
   const [done, setDone] = useState(false);
   const [outputSize, setOutputSize] = useState<'original' | 'youtube' | 'tiktok'>('original');
 
-  const safeTitle = movieTitle && movieTitle.trim() !== '' ? movieTitle : 'football-news';
+  const safeTitle = movieTitle && movieTitle.trim() !== '' ? movieTitle : 'movie-recap';
 
   const assColor = (hex: string) => {
     const value = hex.replace('#', '').padStart(6, '0');
@@ -145,7 +145,7 @@ export function VideoExporter({
       else if (filters.length > 0) args.push('-c:a', 'copy');
       args.push('-shortest', 'output.mp4');
 
-      setStatusText('Rendering football news video...');
+      setStatusText('Rendering movie recap video...');
       let exitCode = await ffmpeg.exec(args);
       if (exitCode !== 0) throw new Error(`FFmpeg could not create the output video (exit code ${exitCode}).`);
 
@@ -187,7 +187,7 @@ export function VideoExporter({
       <h3 className="text-sm font-semibold text-slate-700">Export Football News Video</h3>
       {exporting && <div className="flex items-center gap-3 rounded-xl border border-primary-200 bg-primary-50 p-4"><Loader2 className="h-5 w-5 animate-spin text-primary-600" /><div className="text-sm font-medium text-primary-700 truncate">{statusText}</div></div>}
       {error && <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700"><AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0" /><span>{error}</span></div>}
-      {done && !error && <div className="flex items-start gap-3 rounded-xl border border-primary-200 bg-primary-50 px-4 py-3 text-sm text-primary-700"><Download className="mt-0.5 h-5 w-5 flex-shrink-0" /><span>Football news video exported successfully with logo, audio and subtitles.</span></div>}
+      {done && !error && <div className="flex items-start gap-3 rounded-xl border border-primary-200 bg-primary-50 px-4 py-3 text-sm text-primary-700"><Download className="mt-0.5 h-5 w-5 flex-shrink-0" /><span>Movie recap video exported successfully with logo, audio and subtitles.</span></div>}
       <label className="block max-w-xs space-y-1"><span className="text-xs font-medium text-slate-500">Video size</span><select value={outputSize} onChange={(event) => setOutputSize(event.target.value as 'original' | 'youtube' | 'tiktok')} disabled={exporting} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"><option value="original">Original size</option><option value="youtube">YouTube — 16:9 (1280×720)</option><option value="tiktok">TikTok — 9:16 (720×1280)</option></select></label>
       <Button size="lg" onClick={handleFFmpegExport} disabled={exporting || disabled} className="w-full sm:w-auto">{exporting ? <><Loader2 className="h-5 w-5 animate-spin" /> Processing...</> : <><Zap className="h-5 w-5 text-amber-300" /> Export MP4</>}</Button>
     </div>

@@ -67,7 +67,7 @@ export function RecapGenerator({ onOpenSettings }: RecapGeneratorProps) {
 
       setStep('result');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Football news generation failed. Please try again.');
+      setError(err instanceof Error ? err.message : 'Movie recap generation failed. Please try again.');
       setGenerationStage('error');
     }
   }, [

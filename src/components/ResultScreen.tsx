@@ -53,7 +53,7 @@ export function ResultScreen() {
     <div className="mx-auto max-w-5xl space-y-10 animate-fade-in">
       <div className="flex flex-col gap-4 border-b border-slate-200 pb-6 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary-600">Football News Studio</p>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary-600">AI Movie Recap V2</p>
           <h2 className="mt-1 text-2xl font-bold text-slate-900">
           {isCustomMode ? 'Custom Audio & Subtitles' : 'Generated Result'}
           </h2>

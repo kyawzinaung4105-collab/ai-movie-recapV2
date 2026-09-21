@@ -20,7 +20,7 @@ export function TranslationEditor({ sourceCues, voiceId, onTranslationApplied, o
   const [error, setError] = useState('');
 
   const sourceText = useMemo(() => sourceCues.map((cue) => cue.text).join('\n'), [sourceCues]);
-  const translationPrompt = useMemo(() => `Translate the following English football news transcript into natural Burmese for narration and subtitles. Keep the same number of non-empty lines, keep the original order, do not add numbering or explanations, and return only the Burmese lines.\n\n${sourceText}`, [sourceText]);
+  const translationPrompt = useMemo(() => `Translate the following English movie recap transcript into natural Burmese for narration and subtitles. Keep the same number of non-empty lines, keep the original order, do not add numbering or explanations, and return only the Burmese lines.\n\n${sourceText}`, [sourceText]);
   const translatedLines = translation.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
   const isLineCountMatch = translatedLines.length === sourceCues.length;
 

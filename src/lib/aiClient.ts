@@ -151,13 +151,13 @@ export async function analyzeVideoAndGenerateScript(
     '. You return results as JSON only.';
 
   const prompt = `Analyze this video and provide:
-1. A concise football news headline or match title (best guess)
+1. A concise movie recap headline or match title (best guess)
 2. A complete transcription of all dialogue/voiceover
 3. A ${language === 'myanmar' ? 'Burmese' : 'English'} translation of the dialogue
 
 Return ONLY valid JSON in this exact format:
 {
-  "movieTitle": "the football news headline",
+  "movieTitle": "the movie recap headline",
   "titleConfident": true,
   "segments": [
     { "start": 0.0, "end": 5.0, "text": "translated dialogue segment" },
