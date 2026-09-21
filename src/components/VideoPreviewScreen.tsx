@@ -8,6 +8,7 @@ interface VideoPreviewScreenProps {
   videoSource: VideoSource;
   onContinue: () => void;
   onBack: () => void;
+  showContinue?: boolean;
 }
 
 function PlatformIcon({ platform }: { platform?: Platform }) {
@@ -17,7 +18,7 @@ function PlatformIcon({ platform }: { platform?: Platform }) {
   return <Film className="h-4 w-4 text-slate-500" />;
 }
 
-export function VideoPreviewScreen({ videoSource, onContinue, onBack }: VideoPreviewScreenProps) {
+export function VideoPreviewScreen({ videoSource, onContinue, onBack, showContinue = true }: VideoPreviewScreenProps) {
   return (
     <div className="space-y-6 animate-fade-in">
       <h2 className="text-xl font-bold text-slate-900">Video Preview</h2>
@@ -62,13 +63,13 @@ export function VideoPreviewScreen({ videoSource, onContinue, onBack }: VideoPre
         </div>
       </div>
 
-      <div className="flex items-center justify-between">
+      <div className={`flex items-center ${showContinue ? 'justify-between' : 'justify-start'}`}>
         <Button variant="ghost" onClick={onBack}>
           <ArrowLeft className="h-4 w-4" /> Back
         </Button>
-        <Button size="lg" onClick={onContinue}>
-          Continue to Recap <ArrowRight className="h-5 w-5" />
-        </Button>
+        {showContinue && <Button size="lg" onClick={onContinue}>
+          Continue to Source Text <ArrowRight className="h-5 w-5" />
+        </Button>}
       </div>
     </div>
   );

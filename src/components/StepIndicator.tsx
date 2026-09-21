@@ -3,8 +3,8 @@ import type { StepId } from '@/types';
 
 const STEPS: { label: string; ids: StepId[] }[] = [
   { label: 'Upload', ids: ['input', 'preview'] },
-  { label: 'Source Text', ids: ['recap-select', 'generate'] },
-  { label: 'Burmese', ids: ['language', 'voice'] },
+  { label: 'Source Text', ids: ['preview', 'recap-select', 'generate'] },
+  { label: 'Voice', ids: ['language', 'voice'] },
   { label: 'Result', ids: ['result'] },
 ];
 

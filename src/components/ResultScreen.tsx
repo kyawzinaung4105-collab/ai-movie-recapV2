@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { RotateCcw } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { RotateCcw, Volume2, Loader2 } from 'lucide-react';
 import { useRecap } from '@/context/RecapContext';
 import { MovieTitleEditor } from '@/components/MovieTitleEditor';
 import { BlurEditor } from '@/components/BlurEditor';
@@ -10,6 +10,7 @@ import { CustomAudioUpload } from '@/components/CustomAudioUpload';
 import { TranslationEditor } from '@/components/TranslationEditor';
 import { CustomTranslationWorkflow } from '@/components/CustomTranslationWorkflow';
 import { Button } from '@/components/ui/Button';
+import { generateElevenLabsVoiceover } from '@/lib/elevenlabsClient';
 
 export function ResultScreen() {
   const {
@@ -31,6 +32,8 @@ export function ResultScreen() {
     setLogoSettings,
     resetAll,
   } = useRecap();
+  const [voiceoverLoading, setVoiceoverLoading] = useState(false);
+  const [voiceoverError, setVoiceoverError] = useState('');
 
   useEffect(() => {
     if (!videoSource || movieTitle.trim()) return;
@@ -109,6 +112,32 @@ export function ResultScreen() {
           onTranslationApplied={setCustomCues}
           onAudioGenerated={setCustomAudioUrl}
         />
+      )}
+
+      {isCustomMode && customCues.length > 0 && !customAudioUrl && (
+        <section className="rounded-2xl border border-violet-200 bg-violet-50/60 p-5 shadow-sm sm:p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h3 className="text-base font-bold text-slate-900">Create narration with selected voice</h3>
+              <p className="mt-1 text-sm leading-6 text-slate-500">Burmese translation ကို ရွေးထားတဲ့ voice နဲ့ အသံဖိုင်ပြောင်းပြီး video export ထဲ ထည့်နိုင်ပါတယ်။</p>
+            </div>
+            <Button disabled={voiceoverLoading || !voiceId} onClick={async () => {
+              setVoiceoverError('');
+              setVoiceoverLoading(true);
+              try {
+                const audioUrl = await generateElevenLabsVoiceover(customCues.map((cue) => cue.text).join(' '), voiceId);
+                setCustomAudioUrl(audioUrl);
+              } catch (error) {
+                setVoiceoverError(error instanceof Error ? error.message : 'Voiceover generation failed.');
+              } finally {
+                setVoiceoverLoading(false);
+              }
+            }}>
+              {voiceoverLoading ? <><Loader2 className="h-4 w-4 animate-spin" /> Creating...</> : <><Volume2 className="h-4 w-4" /> Create Voiceover</>}
+            </Button>
+          </div>
+          {voiceoverError && <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{voiceoverError}</p>}
+        </section>
       )}
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
