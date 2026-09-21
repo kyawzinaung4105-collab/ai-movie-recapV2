@@ -8,6 +8,7 @@ import { FinalPreview } from '@/components/FinalPreview';
 import { VideoExporter } from '@/components/VideoExporter';
 import { CustomAudioUpload } from '@/components/CustomAudioUpload';
 import { TranslationEditor } from '@/components/TranslationEditor';
+import { CustomTranslationWorkflow } from '@/components/CustomTranslationWorkflow';
 import { Button } from '@/components/ui/Button';
 
 export function ResultScreen() {
@@ -84,6 +85,13 @@ export function ResultScreen() {
         onCaptionChange={setCaptionSettings}
         onLogoChange={setLogoSettings}
       />
+
+      {isCustomMode && (
+        <CustomTranslationWorkflow
+          duration={videoSource.duration}
+          onTranslationApplied={setCustomCues}
+        />
+      )}
 
       {language === 'english' && generationResult && (
         <TranslationEditor

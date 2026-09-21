@@ -1,0 +1,96 @@
+import { useMemo, useState } from 'react';
+import { CheckCircle2, Clipboard, FileText, Languages } from 'lucide-react';
+import { Button } from '@/components/ui/Button';
+import type { CaptionCue } from '@/types';
+
+interface CustomTranslationWorkflowProps {
+  duration?: number;
+  onTranslationApplied: (cues: CaptionCue[]) => void;
+}
+
+function buildCues(lines: string[], duration?: number): CaptionCue[] {
+  const totalDuration = Math.max(duration || lines.length * 5, lines.length * 2);
+  const segmentDuration = totalDuration / lines.length;
+  return lines.map((text, index) => ({
+    start: index * segmentDuration,
+    end: index === lines.length - 1 ? totalDuration : (index + 1) * segmentDuration,
+    text,
+  }));
+}
+
+export function CustomTranslationWorkflow({ duration, onTranslationApplied }: CustomTranslationWorkflowProps) {
+  const [englishTranscript, setEnglishTranscript] = useState('');
+  const [jsonOutput, setJsonOutput] = useState('');
+  const [copied, setCopied] = useState(false);
+  const [applied, setApplied] = useState(false);
+  const [error, setError] = useState('');
+
+  const englishLines = useMemo(() => englishTranscript.split(/\r?\n/).map((line) => line.trim()).filter(Boolean), [englishTranscript]);
+  const prompt = useMemo(() => `You are a professional football news translator. Translate each English line into natural Burmese for narration and subtitles. Keep the exact order and return ONLY valid JSON in this format: {"translations":["Burmese line 1","Burmese line 2"]}. The number of translations must exactly match the number of English lines. Do not add explanations.\n\nEnglish transcript:\n${englishTranscript}`, [englishTranscript]);
+
+  const copyFullPrompt = async () => {
+    try {
+      await navigator.clipboard.writeText(prompt);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    } catch {
+      setError('Prompt copy မရပါ။ စာသားကို manually select လုပ်ပြီး copy လုပ်ပါ။');
+    }
+  };
+
+  const applyJsonTranslation = () => {
+    setError('');
+    try {
+      const match = jsonOutput.match(/\{[\s\S]*\}/);
+      const parsed = JSON.parse(match ? match[0] : jsonOutput) as { translations?: unknown };
+      if (!Array.isArray(parsed.translations)) throw new Error('JSON ထဲမှာ translations array မတွေ့ပါ။');
+      const translatedLines = parsed.translations.map((line) => String(line).trim()).filter(Boolean);
+      if (englishLines.length === 0) throw new Error('English transcript ကို အရင်ထည့်ပါ။');
+      if (translatedLines.length !== englishLines.length) {
+        throw new Error(`English line ${englishLines.length} ကြောင်းရှိပါတယ်။ Burmese translation က ${translatedLines.length} ကြောင်းပဲရှိပါတယ်။`);
+      }
+      onTranslationApplied(buildCues(translatedLines, duration));
+      setApplied(true);
+    } catch (err) {
+      setApplied(false);
+      setError(err instanceof Error ? err.message : 'Translation JSON ကို ဖတ်မရပါ။');
+    }
+  };
+
+  return (
+    <section className="space-y-4 rounded-2xl border-2 border-indigo-200 bg-white p-5 shadow-sm">
+      <div className="flex items-start gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white"><Languages className="h-5 w-5" /></div>
+        <div>
+          <h3 className="text-sm font-bold text-slate-900">Custom Football Translation Workflow</h3>
+          <p className="mt-1 text-xs leading-5 text-slate-500">English transcript ကိုထည့်ပြီး prompt copy လုပ်ပါ။ Gemini မှ JSON result ရလာရင် အောက်မှာ paste လုပ်ပြီး subtitle timing အဖြစ်သုံးနိုင်ပါတယ်။</p>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <label className="flex items-center gap-2 text-xs font-semibold text-slate-700"><FileText className="h-4 w-4 text-indigo-600" /> English transcript</label>
+          <span className="text-xs text-slate-400">{englishLines.length} lines</span>
+        </div>
+        <textarea value={englishTranscript} onChange={(event) => { setEnglishTranscript(event.target.value); setApplied(false); setError(''); }} rows={7} placeholder="English transcript text will appear here..." className="w-full resize-y rounded-xl border border-indigo-300 px-3 py-3 text-sm leading-6 text-slate-800 focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-100" />
+      </div>
+
+      <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div><p className="text-sm font-bold text-indigo-900">Gemini App ဖြင့် ဆက်လက်ဘာသာပြန်ရန်</p><p className="mt-1 text-xs text-indigo-700">Prompt ကို copy လုပ်ပြီး Gemini မှာ paste လုပ်ပါ။ JSON output ကိုပဲ ပြန်ယူပါ။</p></div>
+          <Button size="sm" onClick={copyFullPrompt} disabled={!englishTranscript.trim()}>{copied ? <CheckCircle2 className="h-4 w-4" /> : <Clipboard className="h-4 w-4" />}{copied ? 'Copied' : 'Copy Full Prompt'}</Button>
+        </div>
+        <pre className="mt-3 max-h-24 overflow-auto whitespace-pre-wrap rounded-lg bg-white px-3 py-2 text-[11px] leading-5 text-slate-600">{prompt}</pre>
+      </div>
+
+      <div className="space-y-2">
+        <label htmlFor="custom-translation-json" className="text-xs font-semibold text-slate-700">Gemini JSON output paste here</label>
+        <textarea id="custom-translation-json" value={jsonOutput} onChange={(event) => { setJsonOutput(event.target.value); setApplied(false); setError(''); }} rows={5} placeholder={'{"translations":["မြန်မာစာကြောင်း ၁","မြန်မာစာကြောင်း ၂"]}'} className="font-myanmar w-full resize-y rounded-xl border border-slate-300 px-3 py-3 text-sm leading-7 text-slate-800 focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-100" />
+      </div>
+
+      {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{error}</p>}
+      {applied && <p className="flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-700"><CheckCircle2 className="h-4 w-4" /> Burmese translation ကို subtitle timing နဲ့ ချိတ်ပြီးပါပြီ။</p>}
+      <Button onClick={applyJsonTranslation} disabled={!englishTranscript.trim() || !jsonOutput.trim()} className="w-full"><CheckCircle2 className="h-4 w-4" /> Step 2: ဘာသာပြန်ထားတာ ထည့်မယ် (Next)</Button>
+    </section>
+  );
+}

@@ -38,8 +38,8 @@ export function RecapSelector({ onSelect, onCustomSelect, onBack }: RecapSelecto
             <Upload className="h-7 w-7" />
           </div>
           <div className="text-left">
-            <p className="text-lg font-semibold text-slate-900">Custom Audio & Subtitles</p>
-            <p className="text-sm text-slate-500">Upload your own narration audio and transcript file</p>
+            <p className="text-lg font-semibold text-slate-900">Custom Translation Workflow</p>
+            <p className="text-sm text-slate-500">Copy prompt to Gemini, paste Burmese JSON, and sync subtitles</p>
           </div>
           <ArrowRight className="ml-auto h-5 w-5 text-slate-300 group-hover:text-emerald-500 transition-colors" />
         </button>
