@@ -1,10 +1,11 @@
 import { useState, useCallback } from 'react';
-import { Sparkles, AlertCircle, ArrowLeft, Loader2, Settings } from 'lucide-react';
+import { Sparkles, ArrowLeft, Loader2, Settings } from 'lucide-react';
 import { useRecap } from '@/context/RecapContext';
 import { getEnvConfig } from '@/lib/env';
 import { runGenerationPipeline, getStageInfo } from '@/lib/generationPipeline';
 import { buildSampleCues } from '@/lib/captions';
 import { Button, ErrorBanner } from '@/components/ui/Button';
+import type { GenerationStage } from '@/types';
 
 interface RecapGeneratorProps {
   onOpenSettings: () => void;
@@ -49,7 +50,7 @@ export function RecapGenerator({ onOpenSettings }: RecapGeneratorProps) {
     try {
       const result = await runGenerationPipeline(
         { videoSource, language, voiceId },
-        (stage) => setGenerationStage(stage as any)
+        (stage) => setGenerationStage(stage as GenerationStage)
       );
 
       setGenerationResult(result);

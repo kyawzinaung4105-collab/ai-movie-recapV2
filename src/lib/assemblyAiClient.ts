@@ -116,7 +116,7 @@ async function transcribeThroughLocalProxy(videoUrl: string, apiKey: string, onS
   const form = new FormData();
   form.append('apiKey', apiKey);
   form.append('video', await media.blob(), 'video.mp4');
-  const onlineProxy = 'https://footnewsapi-kmqvjnan.manus.space/api/assemblyai/transcribe';
+  const onlineProxy = '/api/assemblyai/transcribe';
   const response = await fetch(onlineProxy, { method: 'POST', body: form });
   const payload = await response.json() as { cues?: CaptionCue[]; jobId?: string; error?: string };
   if (!response.ok || (!payload.cues && !payload.jobId)) throw new Error(payload.error || 'Online AssemblyAI proxy မရပါ။');

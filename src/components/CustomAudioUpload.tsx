@@ -1,6 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
 import { Upload, FileAudio, FileText, X, CheckCircle2, Info } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
 import { parseTranscriptFile } from '@/lib/transcriptParser';
 import type { CaptionCue } from '@/types';
 
