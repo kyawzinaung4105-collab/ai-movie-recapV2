@@ -51,6 +51,28 @@ export function VoiceSelector({ audioUrl, translatedCues, onAudioSelected, onCon
     window.setTimeout(() => setCopied(false), 1800);
   };
 
+  const downloadSrt = () => {
+    if (translatedCues.length === 0) {
+      setError('အရင်ဆုံး Burmese translation ကို Apply လုပ်ပါ။');
+      return;
+    }
+    const toSrtTime = (seconds: number) => {
+      const safe = Math.max(0, seconds);
+      const hours = Math.floor(safe / 3600);
+      const minutes = Math.floor((safe % 3600) / 60);
+      const wholeSeconds = Math.floor(safe % 60);
+      const millis = Math.round((safe - Math.floor(safe)) * 1000);
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${wholeSeconds.toString().padStart(2, '0')},${millis.toString().padStart(3, '0')}`;
+    };
+    const srt = translatedCues.map((cue, index) => `${index + 1}\n${toSrtTime(cue.start)} --> ${toSrtTime(cue.end)}\n${cue.text.trim()}\n`).join('\n');
+    const url = URL.createObjectURL(new Blob([srt], { type: 'text/plain;charset=utf-8' }));
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = 'burmese-voiceover.srt';
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="mx-auto max-w-3xl space-y-8 animate-fade-in">
       <div className="text-center">
@@ -85,6 +107,7 @@ export function VoiceSelector({ audioUrl, translatedCues, onAudioSelected, onCon
           <Button size="sm" variant="secondary" onClick={copyPrompt}><Clipboard className="h-4 w-4" />{copied ? 'Copied' : 'Copy Prompt'}</Button>
         </div>
         <pre className="max-h-56 overflow-auto whitespace-pre-wrap rounded-xl bg-white p-3 text-xs leading-5 text-slate-700">{audioPrompt}</pre>
+        <Button size="sm" variant="secondary" onClick={downloadSrt} disabled={translatedCues.length === 0}>Download SRT for Voicertool</Button>
       </section>
 
       <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-800">
