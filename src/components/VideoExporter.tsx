@@ -89,8 +89,22 @@ export function VideoExporter({
       const corePath = `${import.meta.env.BASE_URL}ffmpeg/ffmpeg-core`;
       setProgress(2);
       setStatusText('Video export engine ကိုဖွင့်နေပါတယ်... ပထမအကြိမ်မှာ ခဏကြာနိုင်ပါတယ်။');
+      // Give React a chance to paint the loading state before the browser
+      // starts fetching and compiling the large WASM binary.
+      await new Promise<void>((resolve) => window.setTimeout(resolve, 50));
+      setProgress(5);
+      const loadPromise = (async () => {
+        const [coreResponse, wasmResponse] = await Promise.all([
+          fetch(`${corePath}.js`, { cache: 'force-cache' }),
+          fetch(`${corePath}.wasm`, { cache: 'force-cache' }),
+        ]);
+        if (!coreResponse.ok || !wasmResponse.ok) {
+          throw new Error(`FFmpeg engine assets could not be loaded (${coreResponse.status}/${wasmResponse.status}).`);
+        }
+        await ffmpeg.load({ coreURL: `${corePath}.js`, wasmURL: `${corePath}.wasm` });
+      })();
       await Promise.race([
-        ffmpeg.load({ coreURL: `${corePath}.js`, wasmURL: `${corePath}.wasm` }),
+        loadPromise,
         new Promise<never>((_, reject) => window.setTimeout(() => reject(new Error('FFmpeg engine load timeout')), 120000)),
       ]);
       setProgress(10);
