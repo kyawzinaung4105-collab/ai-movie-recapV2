@@ -33,30 +33,19 @@ export function FinalPreview({ videoSource, blurSettings, captionSettings, movie
   const activeCaption = getActiveCaption(effectiveCues, currentTime);
   const isEmbedded = !videoSource.isDirectFile;
 
-  // For direct file: map the narration's compact timeline onto the video's
-  // subtitle timeline. This is the same mapping used by FFmpeg on export.
+  // For direct files, the video clock is the source of truth. The MP3 starts
+  // at the first video subtitle cue and keeps its original playback speed.
   useEffect(() => {
     const video = videoRef.current;
     const audio = audioRef.current;
     if (!video || isEmbedded) return;
 
     const firstCueStart = orderedCues.length > 0 ? Math.max(0, orderedCues[0].start) : 0;
-    const lastCueEnd = orderedCues.length > 0 ? Math.max(firstCueStart, orderedCues[orderedCues.length - 1].end) : 0;
-    const targetDuration = lastCueEnd - firstCueStart;
-    let audioSpeed = 1;
-    const updateAudioRate = () => {
-      if (audio && targetDuration > 0 && Number.isFinite(audio.duration)) {
-        const fittedSpeed = audio.duration / targetDuration;
-        audioSpeed = Number.isFinite(fittedSpeed) && fittedSpeed >= 0.5 && fittedSpeed <= 2 ? fittedSpeed : 1;
-        audio.playbackRate = audioSpeed;
-      }
-    };
     const syncAudio = () => {
       if (!audio) return;
-      updateAudioRate();
       const videoTime = video.currentTime;
-      const mappedAudioTime = Math.max(0, (videoTime - firstCueStart) * audioSpeed);
-      if (videoTime < firstCueStart || videoTime > lastCueEnd) {
+      const mappedAudioTime = Math.max(0, videoTime - firstCueStart);
+      if (videoTime < firstCueStart) {
         audio.pause();
       } else {
         if (Math.abs(audio.currentTime - mappedAudioTime) > 0.12) audio.currentTime = mappedAudioTime;

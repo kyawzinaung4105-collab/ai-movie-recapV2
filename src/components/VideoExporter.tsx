@@ -120,24 +120,7 @@ export function VideoExporter({
       }
       if (!targetVideoUrl) throw new Error('No video source found to export.');
 
-      let audioSpeed = 1;
       const firstCueStart = timelineSubtitles.length > 0 ? Math.max(0, timelineSubtitles[0].start) : 0;
-      const lastCueEnd = timelineSubtitles.length > 0 ? Math.max(firstCueStart, timelineSubtitles[timelineSubtitles.length - 1].end) : 0;
-      if (audioTrackUrl && lastCueEnd > firstCueStart) {
-        try {
-          setStatusText('MP3 အရှည်ကို subtitle timing နဲ့ နှိုင်းနေပါတယ်...');
-          const audioDuration = await new Promise<number>((resolve, reject) => {
-            const audio = new Audio(audioTrackUrl);
-            audio.onloadedmetadata = () => resolve(audio.duration);
-            audio.onerror = () => reject(new Error('audio metadata unavailable'));
-          });
-          const targetAudioDuration = lastCueEnd - firstCueStart;
-          const fittedSpeed = audioDuration / targetAudioDuration;
-          if (Number.isFinite(fittedSpeed) && fittedSpeed >= 0.5 && fittedSpeed <= 2) audioSpeed = fittedSpeed;
-        } catch {
-          // If metadata cannot be read, keep the original audio speed.
-        }
-      }
 
       setStatusText('Downloading media into memory...');
       try {
@@ -235,8 +218,10 @@ export function VideoExporter({
         // VoiceTool often exports narration from 00:00 even when the first
         // subtitle cue starts later. Add the leading cue gap automatically.
         const delayMs = Math.round(firstCueStart * 1000);
-        const speedFilter = Math.abs(audioSpeed - 1) > 0.02 ? `atempo=${audioSpeed.toFixed(4)}` : '';
-        const audioFilter = [speedFilter, delayMs > 0 ? `adelay=${delayMs}:all=1` : '', 'apad'].filter(Boolean).join(',');
+        // Keep the narration's original speed. Subtitle timestamps are tied
+        // to the source video's clock; stretching one continuous MP3 changes
+        // the timing of every sentence and makes it drift from the video.
+        const audioFilter = [delayMs > 0 ? `adelay=${delayMs}:all=1` : '', 'apad'].filter(Boolean).join(',');
         args.push('-c:a', 'aac', '-af', audioFilter);
       }
       else if (filters.length > 0) args.push('-c:a', 'copy');
