@@ -109,6 +109,7 @@ export function ResultScreen() {
           audioTrackUrl={exportAudioUrl}
           subtitles={exportSubtitles}
           captionStyle={captionSettings.style}
+          blurSettings={blurSettings}
           logoSettings={logoSettings}
           disabled={!exportVideoUrl}
         />

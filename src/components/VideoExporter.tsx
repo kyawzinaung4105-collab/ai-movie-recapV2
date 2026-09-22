@@ -3,7 +3,7 @@ import { Download, Loader2, AlertCircle, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile } from '@ffmpeg/util';
-import type { CaptionStyle, LogoSettings } from '@/types';
+import type { BlurSettings, CaptionStyle, LogoSettings } from '@/types';
 
 interface SubtitleItem {
   start: number;
@@ -19,6 +19,7 @@ interface VideoExporterProps {
   audioTrackUrl?: string;
   subtitles?: SubtitleItem[];
   captionStyle?: CaptionStyle;
+  blurSettings?: BlurSettings;
   logoSettings?: LogoSettings;
 }
 
@@ -30,6 +31,7 @@ export function VideoExporter({
   audioTrackUrl,
   subtitles = [],
   captionStyle,
+  blurSettings,
   logoSettings,
 }: VideoExporterProps) {
   const [exporting, setExporting] = useState(false);
@@ -188,6 +190,19 @@ export function VideoExporter({
 
       const filters: string[] = [];
       let videoLabel = '[0:v]';
+      if (blurSettings?.enabled) {
+        const x = Math.max(0, Math.min(0.99, blurSettings.x));
+        const y = Math.max(0, Math.min(0.99, blurSettings.y));
+        const width = Math.max(0.01, Math.min(1 - x, blurSettings.width));
+        const height = Math.max(0.01, Math.min(1 - y, blurSettings.height));
+        const radius = Math.max(2, Math.min(12, Math.round(blurSettings.strength / 2)));
+        // Blur only the selected source rectangle, then place it back over the
+        // original frame. Percent coordinates match the browser preview.
+        filters.push(
+          `${videoLabel}split[base][blurSource];[blurSource]crop=w=iw*${width}:h=ih*${height}:x=iw*${x}:y=ih*${y},boxblur=${radius}:1[blurred];[base][blurred]overlay=x=main_w*${x}:y=main_h*${y}[blurredVideo]`,
+        );
+        videoLabel = '[blurredVideo]';
+      }
       if (hasSubtitles) {
         filters.push(`${videoLabel}ass=subtitles.ass:fontsdir=.[captioned]`);
         videoLabel = '[captioned]';
