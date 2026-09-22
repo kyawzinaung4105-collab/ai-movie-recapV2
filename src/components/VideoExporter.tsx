@@ -78,6 +78,7 @@ export function VideoExporter({
     setExporting(true);
     setStatusText('Loading FFmpeg engine...');
     let ffmpeg: FFmpeg | undefined;
+    const timelineSubtitles = [...subtitles].sort((a, b) => a.start - b.start);
 
     try {
       ffmpeg = new FFmpeg();
@@ -120,8 +121,8 @@ export function VideoExporter({
       if (!targetVideoUrl) throw new Error('No video source found to export.');
 
       let audioSpeed = 1;
-      const firstCueStart = subtitles.length > 0 ? Math.max(0, subtitles[0].start) : 0;
-      const lastCueEnd = subtitles.length > 0 ? Math.max(firstCueStart, subtitles[subtitles.length - 1].end) : 0;
+      const firstCueStart = timelineSubtitles.length > 0 ? Math.max(0, timelineSubtitles[0].start) : 0;
+      const lastCueEnd = timelineSubtitles.length > 0 ? Math.max(firstCueStart, timelineSubtitles[timelineSubtitles.length - 1].end) : 0;
       if (audioTrackUrl && lastCueEnd > firstCueStart) {
         try {
           setStatusText('MP3 အရှည်ကို subtitle timing နဲ့ နှိုင်းနေပါတယ်...');
@@ -176,8 +177,8 @@ export function VideoExporter({
       }
 
       let hasSubtitles = false;
-      if (subtitles.length > 0) {
-        await ffmpeg.writeFile('subtitles.ass', new TextEncoder().encode(generateAssContent(subtitles)));
+      if (timelineSubtitles.length > 0) {
+        await ffmpeg.writeFile('subtitles.ass', new TextEncoder().encode(generateAssContent(timelineSubtitles)));
         await ffmpeg.writeFile('NotoSansMyanmar-Regular.ttf', await fetchFile(`${import.meta.env.BASE_URL}fonts/NotoSansMyanmar-Regular.ttf`));
         hasSubtitles = true;
       }

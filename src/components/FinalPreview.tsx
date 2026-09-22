@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useCallback } from 'react';
+import { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import { Volume2, VolumeX, Play, Pause } from 'lucide-react';
 import { getActiveCaption } from '@/lib/captions';
 import type { BlurSettings, CaptionCue, CaptionSettings, VideoSource, GenerationResult, LogoSettings } from '@/types';
@@ -29,34 +29,63 @@ export function FinalPreview({ videoSource, blurSettings, captionSettings, movie
   const effectiveCues = (customCues && customCues.length > 0)
     ? customCues
     : (generationResult?.cues || captionSettings.cues);
+  const orderedCues = useMemo(() => [...effectiveCues].sort((a, b) => a.start - b.start), [effectiveCues]);
   const activeCaption = getActiveCaption(effectiveCues, currentTime);
   const isEmbedded = !videoSource.isDirectFile;
 
-  // For direct file: sync video time → audio + captions
+  // For direct file: map the narration's compact timeline onto the video's
+  // subtitle timeline. This is the same mapping used by FFmpeg on export.
   useEffect(() => {
     const video = videoRef.current;
     const audio = audioRef.current;
     if (!video || isEmbedded) return;
 
-    const handleTimeUpdate = () => setCurrentTime(video.currentTime);
-    const handlePlay = () => audio?.play().catch(() => {});
-    const handlePause = () => audio?.pause();
-    const handleSeeking = () => {
-      if (audio) audio.currentTime = video.currentTime;
+    const firstCueStart = orderedCues.length > 0 ? Math.max(0, orderedCues[0].start) : 0;
+    const lastCueEnd = orderedCues.length > 0 ? Math.max(firstCueStart, orderedCues[orderedCues.length - 1].end) : 0;
+    const targetDuration = lastCueEnd - firstCueStart;
+    let audioSpeed = 1;
+    const updateAudioRate = () => {
+      if (audio && targetDuration > 0 && Number.isFinite(audio.duration)) {
+        const fittedSpeed = audio.duration / targetDuration;
+        audioSpeed = Number.isFinite(fittedSpeed) && fittedSpeed >= 0.5 && fittedSpeed <= 2 ? fittedSpeed : 1;
+        audio.playbackRate = audioSpeed;
+      }
     };
+    const syncAudio = () => {
+      if (!audio) return;
+      updateAudioRate();
+      const videoTime = video.currentTime;
+      const mappedAudioTime = Math.max(0, (videoTime - firstCueStart) * audioSpeed);
+      if (videoTime < firstCueStart || videoTime > lastCueEnd) {
+        audio.pause();
+      } else {
+        if (Math.abs(audio.currentTime - mappedAudioTime) > 0.12) audio.currentTime = mappedAudioTime;
+        if (!video.paused) audio.play().catch(() => {});
+      }
+    };
+    const handleTimeUpdate = () => {
+      setCurrentTime(video.currentTime);
+      syncAudio();
+    };
+    const handlePlay = () => syncAudio();
+    const handlePause = () => audio?.pause();
+    const handleSeeking = () => syncAudio();
+    const handleLoadedMetadata = () => syncAudio();
 
     video.addEventListener('timeupdate', handleTimeUpdate);
     video.addEventListener('play', handlePlay);
     video.addEventListener('pause', handlePause);
     video.addEventListener('seeking', handleSeeking);
+    audio?.addEventListener('loadedmetadata', handleLoadedMetadata);
 
     return () => {
       video.removeEventListener('timeupdate', handleTimeUpdate);
       video.removeEventListener('play', handlePlay);
       video.removeEventListener('pause', handlePause);
       video.removeEventListener('seeking', handleSeeking);
+      audio?.removeEventListener('loadedmetadata', handleLoadedMetadata);
     };
-  }, [effectiveAudioUrl, isEmbedded]);
+  }, [effectiveAudioUrl, isEmbedded, orderedCues]);
 
   // For embedded videos: use audio's currentTime for caption sync
   useEffect(() => {
