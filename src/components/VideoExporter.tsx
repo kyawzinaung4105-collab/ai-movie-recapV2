@@ -87,8 +87,14 @@ export function VideoExporter({
       });
 
       const corePath = `${import.meta.env.BASE_URL}ffmpeg/ffmpeg-core`;
-      await ffmpeg.load({ coreURL: `${corePath}.js`, wasmURL: `${corePath}.wasm` });
+      setProgress(2);
+      setStatusText('Video export engine ကိုဖွင့်နေပါတယ်... ပထမအကြိမ်မှာ ခဏကြာနိုင်ပါတယ်။');
+      await Promise.race([
+        ffmpeg.load({ coreURL: `${corePath}.js`, wasmURL: `${corePath}.wasm` }),
+        new Promise<never>((_, reject) => window.setTimeout(() => reject(new Error('FFmpeg engine load timeout')), 120000)),
+      ]);
       setProgress(10);
+      setStatusText('Video နှင့် MP3 ကို export အတွက် ပြင်ဆင်နေပါတယ်...');
 
       let targetVideoUrl = videoBlobUrl;
       if (!targetVideoUrl) {
@@ -102,6 +108,7 @@ export function VideoExporter({
       const lastCueEnd = subtitles.length > 0 ? Math.max(firstCueStart, subtitles[subtitles.length - 1].end) : 0;
       if (audioTrackUrl && lastCueEnd > firstCueStart) {
         try {
+          setStatusText('MP3 အရှည်ကို subtitle timing နဲ့ နှိုင်းနေပါတယ်...');
           const audioDuration = await new Promise<number>((resolve, reject) => {
             const audio = new Audio(audioTrackUrl);
             audio.onloadedmetadata = () => resolve(audio.duration);
