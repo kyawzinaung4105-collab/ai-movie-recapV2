@@ -117,15 +117,25 @@ export function VideoExporter({
 
       setStatusText('Downloading media into memory...');
       try {
-        let videoBytes: Uint8Array;
+        let videoBytes: Uint8Array | undefined;
         if (videoFile && videoFile.size > 0) {
-          videoBytes = new Uint8Array(await videoFile.arrayBuffer());
-        } else {
+          try {
+            videoBytes = new Uint8Array(await videoFile.arrayBuffer());
+          } catch (fileError) {
+            console.warn('Direct video File read failed; trying Response fallback:', fileError);
+            try {
+              videoBytes = new Uint8Array(await new Response(videoFile).arrayBuffer());
+            } catch (responseError) {
+              console.warn('Response video File read failed:', responseError);
+            }
+          }
+        }
+        if (!videoBytes && targetVideoUrl) {
           const response = await fetch(targetVideoUrl);
           if (!response.ok) throw new Error(`video fetch returned ${response.status}`);
           videoBytes = new Uint8Array(await response.arrayBuffer());
         }
-        if (videoBytes.byteLength === 0) throw new Error('empty video file');
+        if (!videoBytes || videoBytes.byteLength === 0) throw new Error('empty video file');
         await ffmpeg.writeFile('input.mp4', videoBytes);
       } catch (videoError) {
         console.error('Video input could not be loaded for export:', videoError);
