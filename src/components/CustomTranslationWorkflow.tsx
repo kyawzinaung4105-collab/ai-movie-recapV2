@@ -137,12 +137,24 @@ export function CustomTranslationWorkflow({ duration, videoUrl, videoFile, onTra
     setError('');
     setTranscribing(true);
     try {
-      const cues = await transcribeVideoWithAssemblyAI(videoUrl, setTranscriptionStatus, videoFile);
+      let cues: CaptionCue[] | undefined;
+      let lastError: unknown;
+      for (let attempt = 1; attempt <= 2 && !cues; attempt += 1) {
+        try {
+          setTranscriptionStatus(attempt === 1 ? 'အသံကို ပြင်ဆင်ပြီး Transcribe လုပ်နေပါတယ်...' : 'ပထမအကြိမ် မအောင်မြင်သေးပါ။ အလိုအလျောက် ပြန်စမ်းနေပါတယ်...');
+          cues = await transcribeVideoWithAssemblyAI(videoUrl, setTranscriptionStatus, videoFile);
+        } catch (err) {
+          lastError = err;
+          if (attempt < 2) await new Promise((resolve) => window.setTimeout(resolve, 1200));
+        }
+      }
+      if (!cues) throw lastError instanceof Error ? lastError : new Error('transcription failed');
       setSourceCues(cues);
       setEnglishTranscript(cues.map((cue) => cue.text).join('\n'));
       setTranscriptionStatus(`${cues.length} English timestamp segments ရပါပြီ`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'English transcription failed.');
+    } catch {
+      setError('Transcribe မအောင်မြင်သေးပါ။ Video ကို မပြောင်းဘဲ ခဏစောင့်ပြီး Transcribe ကို တစ်ကြိမ်ထပ်နှိပ်ပါ။');
+      setTranscriptionStatus('Transcribe ပြန်စမ်းရန် အသင့်ဖြစ်ပါပြီ။');
     } finally {
       setTranscribing(false);
     }

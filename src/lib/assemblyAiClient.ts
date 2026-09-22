@@ -17,16 +17,29 @@ interface AssemblyTranscript {
   words?: AssemblyWord[];
 }
 
+async function readBrowserFile(file: File): Promise<Uint8Array> {
+  try {
+    return new Uint8Array(await file.arrayBuffer());
+  } catch {
+    return new Uint8Array(await new Response(file).arrayBuffer());
+  }
+}
+
 async function extractAudioForTranscription(videoFile: File, onStatus?: (message: string) => void): Promise<File> {
   onStatus?.('Video ထဲက audio ကို ခွဲထုတ်နေပါတယ်...');
   const ffmpeg = new FFmpeg();
   const corePath = `${import.meta.env.BASE_URL}ffmpeg/ffmpeg-core`;
   await ffmpeg.load({ coreURL: `${corePath}.js`, wasmURL: `${corePath}.wasm` });
-  await ffmpeg.writeFile('input.mp4', await fetchFile(videoFile));
-  await ffmpeg.exec(['-i', 'input.mp4', '-vn', '-ac', '1', '-ar', '16000', '-b:a', '32k', 'speech.mp3']);
-  const audio = await ffmpeg.readFile('speech.mp3');
-  if (typeof audio === 'string') throw new Error('Audio track ကို ဖတ်မရပါ။');
-  return new File([audio], 'speech.mp3', { type: 'audio/mpeg' });
+  try {
+    await ffmpeg.writeFile('input.mp4', await readBrowserFile(videoFile));
+    const exitCode = await ffmpeg.exec(['-i', 'input.mp4', '-vn', '-ac', '1', '-ar', '16000', '-b:a', '32k', 'speech.mp3']);
+    if (exitCode !== 0) throw new Error('FFmpeg audio extraction failed.');
+    const audio = await ffmpeg.readFile('speech.mp3');
+    if (typeof audio === 'string') throw new Error('Audio track ကို ဖတ်မရပါ။');
+    return new File([audio], 'speech.mp3', { type: 'audio/mpeg' });
+  } finally {
+    ffmpeg.terminate();
+  }
 }
 
 async function readError(response: Response): Promise<string> {
