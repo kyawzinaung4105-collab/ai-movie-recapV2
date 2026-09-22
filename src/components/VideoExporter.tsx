@@ -150,7 +150,14 @@ export function VideoExporter({
       if (hasAudio) args.push('-map', '1:a');
       args.push('-c:v', filters.length > 0 ? 'libx264' : 'copy');
       if (filters.length > 0) args.push('-preset', 'ultrafast', '-crf', '28', '-threads', '0');
-      if (hasAudio) args.push('-c:a', 'aac', '-af', 'apad');
+      if (hasAudio) {
+        // VoiceTool often exports narration from 00:00 even when the first
+        // subtitle cue starts later. Add the leading cue gap automatically.
+        const firstCueStart = subtitles.length > 0 ? Math.max(0, subtitles[0].start) : 0;
+        const delayMs = Math.round(firstCueStart * 1000);
+        const audioFilter = delayMs > 0 ? `adelay=${delayMs}:all=1,apad` : 'apad';
+        args.push('-c:a', 'aac', '-af', audioFilter);
+      }
       else if (filters.length > 0) args.push('-c:a', 'copy');
       args.push('-shortest', 'output.mp4');
 
