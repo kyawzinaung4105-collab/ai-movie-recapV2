@@ -34,6 +34,7 @@ export function VideoExporter({
   const [statusText, setStatusText] = useState('');
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [outputSize, setOutputSize] = useState<'original' | 'youtube' | 'tiktok'>('original');
 
   const safeTitle = movieTitle && movieTitle.trim() !== '' ? movieTitle : 'movie-recap';
@@ -54,9 +55,12 @@ export function VideoExporter({
     const escapeAssText = (text: string) => text.replace(/\\/g, '\\\\').replace(/[{}]/g, '');
     const style = captionStyle;
     const color = assColor(style?.color || '#ffffff');
-    const outline = style?.outline === false ? 0 : 2;
+    // 24px was too small after export, especially on 1080p/portrait videos.
+    // ASS uses a 1280x720 design canvas, so use a readable minimum and stronger outline.
+    const fontSize = Math.max(42, Math.min(72, Math.round((style?.fontSize || 24) * 1.6)));
+    const outline = style?.outline === false ? 1 : 3;
     const back = style?.background || style?.template === 'box' ? '&H99000000' : '&H00000000';
-    const header = `[Script Info]\nScriptType: v4.00+\nPlayResX: 1280\nPlayResY: 720\n\n[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\nStyle: Default,Noto Sans Myanmar,${style?.fontSize || 24},${color},${color},&H00000000,${back},0,0,1,${outline},1,2,40,40,35,1\n\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n`;
+    const header = `[Script Info]\nScriptType: v4.00+\nPlayResX: 1280\nPlayResY: 720\n\n[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\nStyle: Default,Noto Sans Myanmar,${fontSize},${color},${color},&H00000000,${back},1,0,1,${outline},1,2,40,40,35,1\n\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n`;
     const events = subs.map((sub) => (
       `Dialogue: 0,${assTime(sub.start)},${assTime(sub.end)},Default,,0,0,0,,{\\pos(${Math.round(((style?.x || 50) / 100) * 1280)},${Math.round(((style?.y || 82) / 100) * 720)})}${escapeAssText(sub.text)}`
     )).join('\n');
@@ -66,6 +70,7 @@ export function VideoExporter({
   const handleFFmpegExport = async () => {
     setError('');
     setDone(false);
+    setProgress(0);
     setExporting(true);
     setStatusText('Loading FFmpeg engine...');
     let ffmpeg: FFmpeg | undefined;
@@ -75,9 +80,13 @@ export function VideoExporter({
       ffmpeg.on('log', ({ message }: { message: string }) => {
         if (message.includes('time=')) setStatusText(`Processing... (${message})`);
       });
+      ffmpeg.on('progress', ({ progress: current }: { progress: number }) => {
+        setProgress((value) => Math.max(value, Math.min(99, Math.round(10 + current * (outputSize === 'original' ? 88 : 70)))));
+      });
 
       const corePath = `${import.meta.env.BASE_URL}ffmpeg/ffmpeg-core`;
       await ffmpeg.load({ coreURL: `${corePath}.js`, wasmURL: `${corePath}.wasm` });
+      setProgress(10);
 
       let targetVideoUrl = videoBlobUrl;
       if (!targetVideoUrl) {
@@ -148,6 +157,7 @@ export function VideoExporter({
       setStatusText('Rendering movie recap video...');
       let exitCode = await ffmpeg.exec(args);
       if (exitCode !== 0) throw new Error(`FFmpeg could not create the output video (exit code ${exitCode}).`);
+      setProgress(outputSize === 'original' ? 98 : 80);
 
       let outputFile = 'output.mp4';
       if (outputSize !== 'original') {
@@ -159,6 +169,7 @@ export function VideoExporter({
         ]);
         if (exitCode !== 0) throw new Error(`Could not resize video (exit code ${exitCode}).`);
         outputFile = 'resized.mp4';
+        setProgress(98);
       }
 
       setStatusText('Preparing download...');
@@ -172,6 +183,7 @@ export function VideoExporter({
       document.body.removeChild(anchor);
       URL.revokeObjectURL(url);
       setDone(true);
+      setProgress(100);
     } catch (err: unknown) {
       console.error('Video export failed:', err);
       setError(err instanceof Error ? err.message : 'Video export failed. Please try again.');
@@ -185,7 +197,7 @@ export function VideoExporter({
   return (
     <div className="space-y-3">
       <h3 className="text-sm font-semibold text-slate-700">Export Football News Video</h3>
-      {exporting && <div className="flex items-center gap-3 rounded-xl border border-primary-200 bg-primary-50 p-4"><Loader2 className="h-5 w-5 animate-spin text-primary-600" /><div className="text-sm font-medium text-primary-700 truncate">{statusText}</div></div>}
+      {exporting && <div className="space-y-2 rounded-xl border border-primary-200 bg-primary-50 p-4"><div className="flex items-center gap-3"><Loader2 className="h-5 w-5 animate-spin text-primary-600" /><div className="flex-1 truncate text-sm font-medium text-primary-700">{statusText}</div><span className="text-sm font-bold text-primary-700">{progress}%</span></div><div className="h-2 overflow-hidden rounded-full bg-primary-100"><div className="h-full rounded-full bg-primary-600 transition-all duration-300" style={{ width: `${progress}%` }} /></div></div>}
       {error && <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700"><AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0" /><span>{error}</span></div>}
       {done && !error && <div className="flex items-start gap-3 rounded-xl border border-primary-200 bg-primary-50 px-4 py-3 text-sm text-primary-700"><Download className="mt-0.5 h-5 w-5 flex-shrink-0" /><span>Movie recap video exported successfully with logo, audio and subtitles.</span></div>}
       <label className="block max-w-xs space-y-1"><span className="text-xs font-medium text-slate-500">Video size</span><select value={outputSize} onChange={(event) => setOutputSize(event.target.value as 'original' | 'youtube' | 'tiktok')} disabled={exporting} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"><option value="original">Original size</option><option value="youtube">YouTube — 16:9 (1280×720)</option><option value="tiktok">TikTok — 9:16 (720×1280)</option></select></label>
