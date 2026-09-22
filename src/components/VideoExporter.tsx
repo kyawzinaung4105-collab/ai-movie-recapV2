@@ -221,7 +221,7 @@ export function VideoExporter({
 
   return (
     <div className="space-y-3">
-      <h3 className="text-sm font-semibold text-slate-700">Export Football News Video</h3>
+      <h3 className="text-sm font-semibold text-slate-700">Export AI Movie Recap V2 Video</h3>
       {exporting && <div className="space-y-2 rounded-xl border border-primary-200 bg-primary-50 p-4"><div className="flex items-center gap-3"><Loader2 className="h-5 w-5 animate-spin text-primary-600" /><div className="flex-1 truncate text-sm font-medium text-primary-700">{statusText}</div><span className="text-sm font-bold text-primary-700">{progress}%</span></div><div className="h-2 overflow-hidden rounded-full bg-primary-100"><div className="h-full rounded-full bg-primary-600 transition-all duration-300" style={{ width: `${progress}%` }} /></div></div>}
       {error && <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700"><AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0" /><span>{error}</span></div>}
       {done && !error && <div className="flex items-start gap-3 rounded-xl border border-primary-200 bg-primary-50 px-4 py-3 text-sm text-primary-700"><Download className="mt-0.5 h-5 w-5 flex-shrink-0" /><span>Movie recap video exported successfully with logo, audio and subtitles.</span></div>}

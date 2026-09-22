@@ -17,14 +17,13 @@ export function VoiceSelector({ audioUrl, translatedCues, onAudioSelected, onCon
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
 
-  const audioPrompt = useMemo(() => {
-    const lines = translatedCues.map((cue, index) => {
-      const start = cue.start.toFixed(2);
-      const end = cue.end.toFixed(2);
-      return `${index + 1}. [${start}s - ${end}s] ${cue.text}`;
-    }).join('\n');
-    return `Create one natural Burmese narration MP3 for a movie recap video. Use a clear Myanmar voice, conversational and easy to understand. Read the numbered lines in order and do not add, remove, merge, or reorder any line. Keep each line inside its exact timestamp interval, pause during gaps, and finish before the video ends. Do not say the line numbers or timestamps. Do not add background music or sound effects.\n\nBurmese narration with exact timing:\n${lines || '(Burmese translated subtitle lines will appear here after translation.)'}`;
-  }, [translatedCues]);
+  const audioPrompt = useMemo(() => (
+    translatedCues
+      .map((cue) => cue.text.trim())
+      .filter(Boolean)
+      .join('\n')
+  ), [translatedCues]);
+  const narrationText = audioPrompt || 'ဘာသာပြန်ထားသော မြန်မာစာသားများသည် ဘာသာပြန်ပြီးနောက် ဒီနေရာတွင် ပေါ်လာပါမည်။';
 
   const handleAudio = (file?: File) => {
     if (!file) return;
@@ -82,14 +81,14 @@ export function VoiceSelector({ audioUrl, translatedCues, onAudioSelected, onCon
 
       <section className="space-y-3 rounded-2xl border border-violet-200 bg-violet-50/60 p-5">
         <div className="flex items-center justify-between gap-3">
-          <div><h3 className="text-sm font-bold text-slate-900">Burmese MP3 ထုတ်ရန် Prompt</h3><p className="mt-1 text-xs text-slate-600">Translated Burmese စာသားကို TTS/AI audio tool ထဲထည့်ပြီး MP3 ပြုလုပ်ရန် အသုံးပြုပါ။</p></div>
-          <Button size="sm" variant="secondary" onClick={copyPrompt}><Clipboard className="h-4 w-4" />{copied ? 'Copied' : 'Copy Prompt'}</Button>
+          <div><h3 className="text-sm font-bold text-slate-900">Voicertool ထဲထည့်ရန် မြန်မာစာသား</h3><p className="mt-1 text-xs text-slate-600">အောက်ကစာသားကို တစ်ခါတည်း Copy လုပ်ပြီး Voicertool ရဲ့ Text box ထဲမှာ Paste လုပ်ပါ။</p></div>
+          <Button size="sm" variant="secondary" onClick={copyPrompt} disabled={!audioPrompt}><Clipboard className="h-4 w-4" />{copied ? 'Copied' : 'Copy Text'}</Button>
         </div>
-        <pre className="max-h-56 overflow-auto whitespace-pre-wrap rounded-xl bg-white p-3 text-xs leading-5 text-slate-700">{audioPrompt}</pre>
+        <pre className="max-h-56 overflow-auto whitespace-pre-wrap rounded-xl bg-white p-3 text-xs leading-5 text-slate-700">{narrationText}</pre>
       </section>
 
       <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-800">
-        MP3 အသံနဲ့ subtitle ကိုက်ညီစေဖို့ prompt ထဲက timestamp အတိုင်း line တစ်ကြောင်းချင်း ဖတ်ပြီး ကြားထဲမှာ pause ထားပေးပါ။ Export မှာ translated Burmese subtitle cues တွေကို အဲဒီ timing အတိုင်း video ထဲ burn-in လုပ်ပါမယ်။
+        ဒီနေရာက စာသားထဲမှာ No. နံပါတ်၊ timestamp၊ prompt instruction သို့မဟုတ် အပိုရှင်းပြချက် မပါပါ။ ကိုယ်တိုင်လိုအပ်သလို ပြင်ပြီး Voicertool ထဲ paste လုပ်ပါ။
       </div>
 
       <div className="flex items-center justify-between border-t border-slate-200 pt-5">
