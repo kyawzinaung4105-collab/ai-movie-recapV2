@@ -4,8 +4,8 @@ import { useRecap } from '@/context/RecapContext';
 import { MovieTitleEditor } from '@/components/MovieTitleEditor';
 import { FinalPreview } from '@/components/FinalPreview';
 import { VideoExporter } from '@/components/VideoExporter';
-import { TranslationEditor } from '@/components/TranslationEditor';
-import { BurmeseReviewPanel } from '@/components/BurmeseReviewPanel';
+import { BlurEditor } from '@/components/BlurEditor';
+import { CaptionEditor } from '@/components/CaptionEditor';
 import { Button } from '@/components/ui/Button';
 
 export function ResultScreen() {
@@ -16,12 +16,10 @@ export function ResultScreen() {
     movieTitle,
     setMovieTitle,
     blurSettings,
+    setBlurSettings,
     captionSettings,
     setCaptionSettings,
-    language,
-    voiceId,
     customAudioUrl,
-    setCustomAudioUrl,
     customCues,
     setCustomCues,
     logoSettings,
@@ -33,7 +31,7 @@ export function ResultScreen() {
     if (!videoSource || movieTitle.trim()) return;
     const generatedTitle = generationResult?.movieTitle?.trim();
     const fileTitle = videoSource.fileName.replace(/\.[^/.]+$/, '').replace(/[_-]+/g, ' ').trim();
-    setMovieTitle(generatedTitle && generatedTitle !== 'Unknown Video' ? generatedTitle : (fileTitle || 'Football News'));
+    setMovieTitle(generatedTitle && generatedTitle !== 'Unknown Video' ? generatedTitle : (fileTitle || 'AI Movie Recap V2'));
   }, [movieTitle, generationResult?.movieTitle, videoSource, setMovieTitle]);
 
   if (!videoSource) return null;
@@ -92,21 +90,22 @@ export function ResultScreen() {
         />
       </section>
 
-      {language === 'english' && generationResult && (
-        <TranslationEditor
-          sourceCues={generationResult.cues || []}
-          voiceId={voiceId}
-          onTranslationApplied={setCustomCues}
-          onAudioGenerated={setCustomAudioUrl}
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+        <BlurEditor settings={blurSettings} onChange={setBlurSettings} videoSource={videoSource} />
+        <CaptionEditor
+          settings={captionSettings}
+          onChange={setCaptionSettings}
+          language="myanmar"
+          logoSettings={logoSettings}
+          onLogoChange={setLogoSettings}
         />
-      )}
-
-      {isCustomMode && <BurmeseReviewPanel cues={customCues} onChange={setCustomCues} />}
+      </div>
 
       <section className="rounded-2xl border border-primary-200 bg-primary-50/40 p-5 shadow-sm sm:p-6">
         <VideoExporter
           movieTitle={movieTitle}
           videoBlobUrl={exportVideoUrl}
+          videoFile={videoSource.file}
           audioTrackUrl={exportAudioUrl}
           subtitles={exportSubtitles}
           captionStyle={captionSettings.style}

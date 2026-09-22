@@ -1,9 +1,8 @@
-import { ArrowLeft, ArrowRight, Type } from 'lucide-react';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { useRecap } from '@/context/RecapContext';
 import { CustomTranslationWorkflow } from '@/components/CustomTranslationWorkflow';
-import { BlurEditor } from '@/components/BlurEditor';
-import { CaptionEditor } from '@/components/CaptionEditor';
-import { FinalPreview } from '@/components/FinalPreview';
+import { BurmeseReviewPanel } from '@/components/BurmeseReviewPanel';
+import { TranslationEditor } from '@/components/TranslationEditor';
 import { Button } from '@/components/ui/Button';
 
 interface SourceTextScreenProps {
@@ -14,17 +13,12 @@ interface SourceTextScreenProps {
 export function SourceTextScreen({ onContinue, onBack }: SourceTextScreenProps) {
   const {
     videoSource,
-    blurSettings,
-    setBlurSettings,
-    captionSettings,
-    setCaptionSettings,
     customCues,
     setCustomCues,
-    customAudioUrl,
     generationResult,
-    movieTitle,
-    logoSettings,
-    setLogoSettings,
+    language,
+    voiceId,
+    setCustomAudioUrl,
   } = useRecap();
 
   if (!videoSource) return null;
@@ -44,38 +38,16 @@ export function SourceTextScreen({ onContinue, onBack }: SourceTextScreenProps) 
         onTranslationApplied={setCustomCues}
       />
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-        <div className="mb-5 flex items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-100 text-primary-700"><Type className="h-5 w-5" /></div>
-          <div>
-            <h2 className="text-base font-bold text-slate-900">Preview & subtitle style</h2>
-            <p className="mt-1 text-sm text-slate-500">Adjust Burmese font size, position, caption template, logo, and blur area.</p>
-          </div>
-        </div>
-        <FinalPreview
-          videoSource={videoSource}
-          blurSettings={blurSettings}
-          captionSettings={captionSettings}
-          movieTitle={movieTitle}
-          generationResult={generationResult}
-          customAudioUrl={customAudioUrl}
-          customCues={customCues}
-          logoSettings={logoSettings}
-          onCaptionChange={setCaptionSettings}
-          onLogoChange={setLogoSettings}
+      {language === 'english' && generationResult && (
+        <TranslationEditor
+          sourceCues={generationResult.cues || []}
+          voiceId={voiceId}
+          onTranslationApplied={setCustomCues}
+          onAudioGenerated={setCustomAudioUrl}
         />
-      </section>
+      )}
 
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-        <BlurEditor settings={blurSettings} onChange={setBlurSettings} videoSource={videoSource} />
-        <CaptionEditor
-          settings={captionSettings}
-          onChange={setCaptionSettings}
-          language="myanmar"
-          logoSettings={logoSettings}
-          onLogoChange={setLogoSettings}
-        />
-      </div>
+      <BurmeseReviewPanel cues={customCues} onChange={setCustomCues} />
 
       <div className="flex items-center justify-between border-t border-slate-200 pt-5">
         <Button variant="secondary" onClick={onBack}><ArrowLeft className="h-4 w-4" /> Back to Upload</Button>

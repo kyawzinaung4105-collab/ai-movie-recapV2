@@ -15,6 +15,7 @@ interface VideoExporterProps {
   movieTitle?: string;
   disabled?: boolean;
   videoBlobUrl?: string;
+  videoFile?: File;
   audioTrackUrl?: string;
   subtitles?: SubtitleItem[];
   captionStyle?: CaptionStyle;
@@ -25,6 +26,7 @@ export function VideoExporter({
   movieTitle,
   disabled,
   videoBlobUrl,
+  videoFile,
   audioTrackUrl,
   subtitles = [],
   captionStyle,
@@ -114,7 +116,11 @@ export function VideoExporter({
       }
 
       setStatusText('Downloading media into memory...');
-      await ffmpeg.writeFile('input.mp4', await fetchFile(targetVideoUrl));
+      try {
+        await ffmpeg.writeFile('input.mp4', await fetchFile(videoFile || targetVideoUrl));
+      } catch {
+        throw new Error('Video ကို export အတွက် ဖတ်မရပါ။ Video ကို ပြန် upload လုပ်ပြီး Export ပြန်စမ်းပါ။');
+      }
 
       let hasAudio = false;
       if (audioTrackUrl) {

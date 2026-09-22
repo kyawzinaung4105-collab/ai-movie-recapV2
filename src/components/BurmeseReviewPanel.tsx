@@ -7,6 +7,11 @@ interface BurmeseReviewPanelProps {
 }
 
 export function BurmeseReviewPanel({ cues, onChange }: BurmeseReviewPanelProps) {
+  const formatTime = (seconds: number) => {
+    const total = Math.max(0, Math.round(seconds));
+    return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
+  };
+
   return (
     <section className="rounded-2xl border border-emerald-200 bg-white p-5 shadow-sm sm:p-6">
       <div className="mb-4 flex items-start gap-3">
@@ -24,7 +29,7 @@ export function BurmeseReviewPanel({ cues, onChange }: BurmeseReviewPanelProps) 
         <div className="max-h-[28rem] space-y-3 overflow-y-auto pr-1">
           {cues.map((cue, index) => (
             <label key={`${cue.start}-${index}`} className="block rounded-xl border border-slate-200 bg-slate-50 p-3">
-              <span className="mb-2 flex items-center gap-2 text-xs font-semibold text-slate-500"><span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">{index + 1}</span> Burmese subtitle</span>
+              <span className="mb-2 flex items-center gap-2 text-xs font-semibold text-slate-500"><span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">{index + 1}</span> Burmese subtitle <span className="ml-auto font-mono text-[11px] text-emerald-700">{formatTime(cue.start)} – {formatTime(cue.end)}</span></span>
               <textarea
                 value={cue.text}
                 onChange={(event) => onChange(cues.map((item, itemIndex) => itemIndex === index ? { ...item, text: event.target.value } : item))}
