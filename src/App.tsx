@@ -14,7 +14,7 @@ import { getEnvConfig } from '@/lib/env';
 import type { InputMethod, VideoSource } from '@/types';
 
 function AppContent() {
-  const { step, setStep, videoSource, setVideoSource, language, voiceId, setVoiceId } = useRecap();
+  const { step, setStep, videoSource, setVideoSource, customAudioUrl, setCustomAudioUrl, customCues } = useRecap();
   const [inputMethod, setInputMethod] = useState<InputMethod | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const envConfig = getEnvConfig();
@@ -79,9 +79,9 @@ function AppContent() {
 
         {step === 'voice' && (
           <VoiceSelector
-            language={language}
-            voiceId={voiceId}
-            onSelect={setVoiceId}
+            audioUrl={customAudioUrl}
+            translatedCues={customCues}
+            onAudioSelected={setCustomAudioUrl}
             onContinue={() => setStep('result')}
             onBack={() => setStep('recap-select')}
           />

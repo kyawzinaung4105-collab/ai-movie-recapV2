@@ -1,14 +1,12 @@
-import { useEffect, useState } from 'react';
-import { RotateCcw, Volume2, Loader2 } from 'lucide-react';
+import { useEffect } from 'react';
+import { RotateCcw } from 'lucide-react';
 import { useRecap } from '@/context/RecapContext';
 import { MovieTitleEditor } from '@/components/MovieTitleEditor';
 import { FinalPreview } from '@/components/FinalPreview';
 import { VideoExporter } from '@/components/VideoExporter';
-import { CustomAudioUpload } from '@/components/CustomAudioUpload';
 import { TranslationEditor } from '@/components/TranslationEditor';
 import { BurmeseReviewPanel } from '@/components/BurmeseReviewPanel';
 import { Button } from '@/components/ui/Button';
-import { generateTimedElevenLabsVoiceover } from '@/lib/elevenlabsClient';
 
 export function ResultScreen() {
   const {
@@ -30,8 +28,6 @@ export function ResultScreen() {
     setLogoSettings,
     resetAll,
   } = useRecap();
-  const [voiceoverLoading, setVoiceoverLoading] = useState(false);
-  const [voiceoverError, setVoiceoverError] = useState('');
 
   useEffect(() => {
     if (!videoSource || movieTitle.trim()) return;
@@ -105,42 +101,7 @@ export function ResultScreen() {
         />
       )}
 
-      {isCustomMode && customCues.length > 0 && !customAudioUrl && (
-        <section className="rounded-2xl border border-violet-200 bg-violet-50/60 p-5 shadow-sm sm:p-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h3 className="text-base font-bold text-slate-900">Create narration with selected voice</h3>
-              <p className="mt-1 text-sm leading-6 text-slate-500">Burmese translation ကို ရွေးထားတဲ့ voice နဲ့ အသံဖိုင်ပြောင်းပြီး video export ထဲ ထည့်နိုင်ပါတယ်။</p>
-            </div>
-            <Button disabled={voiceoverLoading || !voiceId} onClick={async () => {
-              setVoiceoverError('');
-              setVoiceoverLoading(true);
-              try {
-                const audioUrl = await generateTimedElevenLabsVoiceover(customCues, voiceId);
-                setCustomAudioUrl(audioUrl);
-              } catch (error) {
-                setVoiceoverError(error instanceof Error ? error.message : 'Voiceover generation failed.');
-              } finally {
-                setVoiceoverLoading(false);
-              }
-            }}>
-              {voiceoverLoading ? <><Loader2 className="h-4 w-4 animate-spin" /> Creating...</> : <><Volume2 className="h-4 w-4" /> Create Voiceover</>}
-            </Button>
-          </div>
-          {voiceoverError && <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{voiceoverError}</p>}
-        </section>
-      )}
-
       {isCustomMode && <BurmeseReviewPanel cues={customCues} onChange={setCustomCues} />}
-
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-        <CustomAudioUpload
-          onAudioLoaded={setCustomAudioUrl}
-          onCuesLoaded={setCustomCues}
-          currentAudioUrl={customAudioUrl}
-          currentCues={customCues}
-        />
-      </section>
 
       <section className="rounded-2xl border border-primary-200 bg-primary-50/40 p-5 shadow-sm sm:p-6">
         <VideoExporter
