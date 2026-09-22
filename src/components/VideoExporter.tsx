@@ -221,7 +221,14 @@ export function VideoExporter({
         // Keep the narration's original speed. Subtitle timestamps are tied
         // to the source video's clock; stretching one continuous MP3 changes
         // the timing of every sentence and makes it drift from the video.
-        const audioFilter = [delayMs > 0 ? `adelay=${delayMs}:all=1` : '', 'apad'].filter(Boolean).join(',');
+        // Some MP3 tools add silence before the first spoken word. Remove that
+        // padding first, then place the narration at the first video cue so
+        // the audio is not offset twice.
+        const audioFilter = [
+          'silenceremove=start_periods=1:start_duration=0.1:start_threshold=-40dB',
+          delayMs > 0 ? `adelay=${delayMs}:all=1` : '',
+          'apad',
+        ].filter(Boolean).join(',');
         args.push('-c:a', 'aac', '-af', audioFilter);
       }
       else if (filters.length > 0) args.push('-c:a', 'copy');
