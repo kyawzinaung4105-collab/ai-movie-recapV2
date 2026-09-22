@@ -117,9 +117,19 @@ export function VideoExporter({
 
       setStatusText('Downloading media into memory...');
       try {
-        await ffmpeg.writeFile('input.mp4', await fetchFile(videoFile || targetVideoUrl));
-      } catch {
-        throw new Error('Video ကို export အတွက် ဖတ်မရပါ။ Video ကို ပြန် upload လုပ်ပြီး Export ပြန်စမ်းပါ။');
+        let videoBytes: Uint8Array;
+        if (videoFile && videoFile.size > 0) {
+          videoBytes = new Uint8Array(await videoFile.arrayBuffer());
+        } else {
+          const response = await fetch(targetVideoUrl);
+          if (!response.ok) throw new Error(`video fetch returned ${response.status}`);
+          videoBytes = new Uint8Array(await response.arrayBuffer());
+        }
+        if (videoBytes.byteLength === 0) throw new Error('empty video file');
+        await ffmpeg.writeFile('input.mp4', videoBytes);
+      } catch (videoError) {
+        console.error('Video input could not be loaded for export:', videoError);
+        throw new Error('Video file ကို browser က မဖတ်နိုင်ပါ။ Upload ထဲက video ကို ပြန်ရွေးပြီး metadata ပြပြီးနောက် Export ပြန်စမ်းပါ။');
       }
 
       let hasAudio = false;
