@@ -24,6 +24,16 @@ export function VoiceSelector({ audioUrl, translatedCues, onAudioSelected, onCon
       .join('\n')
   ), [translatedCues]);
   const narrationText = audioPrompt || 'ဘာသာပြန်ထားသော မြန်မာစာသားများသည် ဘာသာပြန်ပြီးနောက် ဒီနေရာတွင် ပေါ်လာပါမည်။';
+  const speakingSeconds = translatedCues.reduce((total, cue) => total + Math.max(0, cue.end - cue.start), 0);
+  const firstCueStart = translatedCues.length > 0 ? Math.max(0, translatedCues[0].start) : 0;
+  const lastCueEnd = translatedCues.length > 0 ? Math.max(firstCueStart, translatedCues[translatedCues.length - 1].end) : 0;
+  const mp3TargetSeconds = Math.max(0, lastCueEnd - firstCueStart);
+  const formatDuration = (seconds: number) => {
+    const rounded = Math.max(0, Math.round(seconds));
+    const minutes = Math.floor(rounded / 60);
+    const remainingSeconds = rounded % 60;
+    return `${minutes} မိနစ် ${remainingSeconds.toString().padStart(2, '0')} စက္ကန့်`;
+  };
 
   const handleAudio = (file?: File) => {
     if (!file) return;
@@ -85,6 +95,19 @@ export function VoiceSelector({ audioUrl, translatedCues, onAudioSelected, onCon
           <Button size="sm" variant="secondary" onClick={copyPrompt} disabled={!audioPrompt}><Clipboard className="h-4 w-4" />{copied ? 'Copied' : 'Copy Text'}</Button>
         </div>
         <pre className="max-h-56 overflow-auto whitespace-pre-wrap rounded-xl bg-white p-3 text-xs leading-5 text-slate-700">{narrationText}</pre>
+      </section>
+
+      <section className="grid gap-3 sm:grid-cols-2">
+        <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4">
+          <p className="text-xs font-semibold text-sky-700">တကယ်ဖတ်ရမယ့် စကားပြောချိန်</p>
+          <p className="mt-1 text-xl font-bold text-sky-950">{formatDuration(speakingSeconds)}</p>
+          <p className="mt-1 text-xs leading-5 text-sky-800">Subtitle စာကြောင်းများရဲ့ အသံဖတ်ချိန် စုစုပေါင်းပါ။ စာကြောင်းကြား pause မပါပါ။</p>
+        </div>
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+          <p className="text-xs font-semibold text-emerald-700">MP3 ထုတ်ရန် Target အရှည်</p>
+          <p className="mt-1 text-xl font-bold text-emerald-950">{formatDuration(mp3TargetSeconds)}</p>
+          <p className="mt-1 text-xs leading-5 text-emerald-800">ပထမ Subtitle စချိန်မှ နောက်ဆုံး Subtitle ပြီးချိန်အထိပါ။ MP3 ကို ဒီအရှည်နီးပါးထားပါ။</p>
+        </div>
       </section>
 
       <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-800">
