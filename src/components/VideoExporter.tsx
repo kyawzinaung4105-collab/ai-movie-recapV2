@@ -95,6 +95,24 @@ export function VideoExporter({
       }
       if (!targetVideoUrl) throw new Error('No video source found to export.');
 
+      let audioSpeed = 1;
+      const firstCueStart = subtitles.length > 0 ? Math.max(0, subtitles[0].start) : 0;
+      const lastCueEnd = subtitles.length > 0 ? Math.max(firstCueStart, subtitles[subtitles.length - 1].end) : 0;
+      if (audioTrackUrl && lastCueEnd > firstCueStart) {
+        try {
+          const audioDuration = await new Promise<number>((resolve, reject) => {
+            const audio = new Audio(audioTrackUrl);
+            audio.onloadedmetadata = () => resolve(audio.duration);
+            audio.onerror = () => reject(new Error('audio metadata unavailable'));
+          });
+          const targetAudioDuration = lastCueEnd - firstCueStart;
+          const fittedSpeed = audioDuration / targetAudioDuration;
+          if (Number.isFinite(fittedSpeed) && fittedSpeed >= 0.5 && fittedSpeed <= 2) audioSpeed = fittedSpeed;
+        } catch {
+          // If metadata cannot be read, keep the original audio speed.
+        }
+      }
+
       setStatusText('Downloading media into memory...');
       await ffmpeg.writeFile('input.mp4', await fetchFile(targetVideoUrl));
 
@@ -153,9 +171,9 @@ export function VideoExporter({
       if (hasAudio) {
         // VoiceTool often exports narration from 00:00 even when the first
         // subtitle cue starts later. Add the leading cue gap automatically.
-        const firstCueStart = subtitles.length > 0 ? Math.max(0, subtitles[0].start) : 0;
         const delayMs = Math.round(firstCueStart * 1000);
-        const audioFilter = delayMs > 0 ? `adelay=${delayMs}:all=1,apad` : 'apad';
+        const speedFilter = Math.abs(audioSpeed - 1) > 0.02 ? `atempo=${audioSpeed.toFixed(4)}` : '';
+        const audioFilter = [speedFilter, delayMs > 0 ? `adelay=${delayMs}:all=1` : '', 'apad'].filter(Boolean).join(',');
         args.push('-c:a', 'aac', '-af', audioFilter);
       }
       else if (filters.length > 0) args.push('-c:a', 'copy');
