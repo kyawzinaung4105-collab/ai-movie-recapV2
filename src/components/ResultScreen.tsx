@@ -106,6 +106,7 @@ export function ResultScreen() {
           movieTitle={movieTitle}
           videoBlobUrl={exportVideoUrl}
           videoFile={videoSource.file}
+          videoDuration={videoSource.duration}
           audioTrackUrl={exportAudioUrl}
           subtitles={exportSubtitles}
           captionStyle={captionSettings.style}

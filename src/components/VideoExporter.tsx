@@ -16,6 +16,7 @@ interface VideoExporterProps {
   disabled?: boolean;
   videoBlobUrl?: string;
   videoFile?: File;
+  videoDuration?: number;
   audioTrackUrl?: string;
   subtitles?: SubtitleItem[];
   captionStyle?: CaptionStyle;
@@ -28,6 +29,7 @@ export function VideoExporter({
   disabled,
   videoBlobUrl,
   videoFile,
+  videoDuration,
   audioTrackUrl,
   subtitles = [],
   captionStyle,
@@ -121,6 +123,24 @@ export function VideoExporter({
       if (!targetVideoUrl) throw new Error('No video source found to export.');
 
       const firstCueStart = timelineSubtitles.length > 0 ? Math.max(0, timelineSubtitles[0].start) : 0;
+      let audioSpeed = 1;
+      let audioDuration = 0;
+      const lastCueEnd = timelineSubtitles.length > 0 ? Math.max(firstCueStart, timelineSubtitles[timelineSubtitles.length - 1].end) : 0;
+      if (audioTrackUrl && lastCueEnd > firstCueStart) {
+        try {
+          setStatusText('MP3 အရှည်ကို subtitle timing နဲ့ နှိုင်းနေပါတယ်...');
+          audioDuration = await new Promise<number>((resolve, reject) => {
+            const audio = new Audio(audioTrackUrl);
+            audio.onloadedmetadata = () => resolve(audio.duration);
+            audio.onerror = () => reject(new Error('audio metadata unavailable'));
+          });
+          const targetAudioDuration = lastCueEnd - firstCueStart;
+          const fittedSpeed = audioDuration / targetAudioDuration;
+          if (Number.isFinite(fittedSpeed) && fittedSpeed >= 0.5 && fittedSpeed <= 2) audioSpeed = fittedSpeed;
+        } catch {
+          // If metadata cannot be read, keep the original audio speed.
+        }
+      }
 
       setStatusText('Downloading media into memory...');
       try {
@@ -187,6 +207,18 @@ export function VideoExporter({
         );
         videoLabel = '[blurredVideo]';
       }
+      const narrationDuration = audioTrackUrl && audioDuration > 0
+        ? (audioDuration / audioSpeed) + firstCueStart
+        : 0;
+      if (narrationDuration > 0 && videoDuration && videoDuration > 0) {
+        if (videoDuration < narrationDuration - 0.05) {
+          const freezeSeconds = narrationDuration - videoDuration;
+          filters.push(`${videoLabel}tpad=stop_mode=clone:stop_duration=${freezeSeconds.toFixed(3)}[video_fitted]`);
+        } else {
+          filters.push(`${videoLabel}trim=duration=${narrationDuration.toFixed(3)},setpts=PTS-STARTPTS[video_fitted]`);
+        }
+        videoLabel = '[video_fitted]';
+      }
       if (hasSubtitles) {
         filters.push(`${videoLabel}ass=subtitles.ass:fontsdir=.[captioned]`);
         videoLabel = '[captioned]';
@@ -232,7 +264,9 @@ export function VideoExporter({
         args.push('-c:a', 'aac', '-af', audioFilter);
       }
       else if (filters.length > 0) args.push('-c:a', 'copy');
-      args.push('-shortest', 'output.mp4');
+      if (narrationDuration > 0) args.push('-t', narrationDuration.toFixed(3));
+      else args.push('-shortest');
+      args.push('output.mp4');
 
       setStatusText('Rendering movie recap video...');
       let exitCode = await ffmpeg.exec(args);
