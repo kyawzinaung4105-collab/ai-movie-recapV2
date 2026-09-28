@@ -144,11 +144,11 @@ async function transcribeDirectly(videoUrl: string | undefined, onStatus?: (mess
   const { upload_url: uploadUrl } = await upload.json() as { upload_url?: string };
   if (!uploadUrl) throw new Error('AssemblyAI upload URL မရပါ။');
 
-  onStatus?.('AssemblyAI is transcribing English speech...');
+  onStatus?.('AssemblyAI is detecting and transcribing the source language...');
   const create = await assemblyFetch('/v2/transcript', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ audio_url: uploadUrl, language_code: 'en', punctuate: true, format_text: true }),
+    body: JSON.stringify({ audio_url: uploadUrl, language_detection: true, punctuate: true, format_text: true }),
   }, apiKey);
   const created = await create.json() as AssemblyTranscript;
   if (!created.id) throw new Error('AssemblyAI transcript ID မရပါ။');

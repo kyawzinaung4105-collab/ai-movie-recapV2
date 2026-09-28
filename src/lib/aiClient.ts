@@ -145,17 +145,18 @@ export async function analyzeVideoAndGenerateScript(
 ): Promise<TranslationResult> {
   const systemPrompt =
     'You are a professional video analyst, movie-recap scriptwriter, and translator. ' +
-    'Return JSON only. When the target language is Burmese, write for ordinary Myanmar viewers: use clear, conversational Myanmar wording and a smooth narrator voice, not a dictionary or word-for-word translation. ' +
+    'Detect the spoken and on-screen source language yourself; it may be Chinese, Korean, English, Japanese, Thai, or another language. Translate every source language into the requested target language rather than leaving foreign sentences in the output. Return JSON only. When the target language is Burmese, write for ordinary Myanmar viewers: use clear, conversational Myanmar wording and a smooth narrator voice, not a dictionary or word-for-word translation. ' +
     'Rebuild the sentence naturally in Burmese, preserve cause-and-effect and emotional tone, and explain idioms or culturally specific phrases by meaning. ' +
     'Keep names, places, dates, and important facts accurate; do not invent details or use stiff machine-translation terms.';
 
   const prompt = `Analyze this video and provide:
 1. A concise movie recap headline or match title (best guess)
-2. A complete transcription of all dialogue/voiceover
-3. A ${language === 'myanmar' ? 'Burmese' : 'English'} translation of the dialogue
+2. A complete transcription of all dialogue/voiceover, preserving the original source language
+3. A ${language === 'myanmar' ? 'Burmese' : 'English'} translation of every dialogue segment, regardless of its source language
 
 Translation and writing rules:
 - ${language === 'myanmar' ? 'Write natural, easy-to-understand Burmese as if a skilled Myanmar movie-recap narrator is telling the story to friends. Do not translate word-for-word or copy English grammar.' : 'Write natural, fluent English rather than a literal translation.'}
+- The source may be Chinese, Korean, English, Japanese, Thai, or another language. Never copy Chinese/Korean/other source sentences into the target text; translate them completely.
 - Keep the story connected: introduce the situation, show who did what, and make cause, consequence, reactions, and turning points clear across adjacent segments.
 - Prefer familiar everyday words over formal, obscure, or machine-translated vocabulary. Use natural Burmese particles, connectors, and sentence order.
 - Adapt idioms, jokes, and emotional phrases by meaning. Do not leave awkward English structures in the target text.
@@ -206,9 +207,9 @@ export async function translateText(
   language: 'myanmar' | 'english'
 ): Promise<string> {
   const systemPrompt =
-    'You are a professional translator. Translate the given text into natural ' +
+    'You are a professional multilingual translator. The input may be Chinese, Korean, English, Japanese, Thai, or another language. Translate all of it into natural ' +
     (language === 'myanmar' ? 'Burmese (Myanmar language)' : 'English') +
-    '. Return only the translation.';
+    '. Do not leave source-language sentences untranslated. For Burmese, rewrite by meaning in clear, conversational Myanmar suitable for a movie recap, not word-for-word. Return only the translation.';
 
   return aiGenerate(text, systemPrompt);
 }

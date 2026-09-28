@@ -73,7 +73,7 @@ export function SettingsModal({ open, onClose, onSaved }: SettingsModalProps) {
                 {showAssembly ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
-            <p className="text-xs leading-5 text-indigo-700">Video ထဲက English speech ကို timestamp ပါတဲ့ transcript ပြောင်းပေးပါသည်။ Key ကို server မတင်ဘဲ ဒီ browser ထဲမှာပဲ သိမ်းထားပါသည်။</p>
+            <p className="text-xs leading-5 text-indigo-700">Video ထဲက Chinese၊ Korean၊ English စတဲ့ source speech ကို language အလိုအလျောက်သိပြီး timestamp ပါတဲ့ transcript ပြောင်းပေးပါသည်။ Key ကို server မတင်ဘဲ ဒီ browser ထဲမှာပဲ သိမ်းထားပါသည်။</p>
           </div>
 
           {/* AI Provider */}

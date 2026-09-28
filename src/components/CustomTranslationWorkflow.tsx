@@ -51,15 +51,15 @@ export function CustomTranslationWorkflow({ duration, videoUrl, videoFile, onTra
   const numberedTranscript = useMemo(() => englishLines.map((line, index) => `[${index + 1}] ${line}`).join('\n'), [englishLines]);
   const durationSeconds = Math.max(1, duration || 0);
   const durationText = durationSeconds >= 60 ? `${Math.floor(durationSeconds / 60)} minutes ${Math.round(durationSeconds % 60)} seconds` : `${Math.round(durationSeconds)} seconds`;
-  const prompt = useMemo(() => `You are a Myanmar movie-recap scriptwriter. Rewrite each numbered English line into concise, natural, conversational Burmese for subtitles and voice narration.
+  const prompt = useMemo(() => `You are a multilingual Myanmar movie-recap scriptwriter. Each numbered source line may be Chinese, Korean, English, Japanese, Thai, or another language. Translate every line into concise, natural, conversational Burmese for subtitles and voice narration.
 
-This is adaptation by meaning, NOT word-for-word translation. Do not copy English grammar, sentence order, or stiff machine-translation vocabulary. Write as a skilled Myanmar narrator telling one connected story to ordinary viewers: use familiar everyday words, natural Burmese particles and connectors, and make the cause-and-effect, turning points, emotions, and character reactions easy to follow. Adapt idioms, jokes, and emotional phrases by meaning. Keep names, places, dates, numbers, and important story facts accurate. Do not add facts, guess missing information, or turn the story into disconnected headlines.
+This is adaptation by meaning, NOT word-for-word translation. Translate Chinese, Korean, English, and every other source language completely; never copy the source sentence into the Burmese result. Do not copy foreign grammar, sentence order, or stiff machine-translation vocabulary. Write as a skilled Myanmar narrator telling one connected story to ordinary viewers: use familiar everyday words, natural Burmese particles and connectors, and make the cause-and-effect, turning points, emotions, and character reactions easy to follow. Adapt idioms, jokes, and emotional phrases by meaning. Keep names, places, dates, numbers, and important story facts accurate. Do not add facts, guess missing information, or turn the story into disconnected headlines.
 
 Keep only useful repetition and filler out; never remove context needed to understand what happened. Each line must stay short enough for its own spoken timestamp interval. The video is ${durationText} long, but subtitles and narration MUST appear ONLY during the original spoken timestamp intervals. Do not fill silent parts or run beyond the video end. Keep each numbered line as one subtitle unit. Every text value must be a non-empty Burmese translation.
 
 Return ONLY valid JSON in this exact format: {"translations":[{"line":1,"text":"ဇာတ်လမ်းအဆက်အစပ်မပျက်တဲ့ သဘာဝကျတဲ့ မြန်မာစာကြောင်း"},{"line":2,"text":"အဖြစ်အပျက်ကို ဆက်စပ်ပြီး နားလည်လွယ်အောင် ပြောထားတဲ့ စာကြောင်း"}]}. Return exactly one object for every line number from 1 to ${englishLines.length}, in numeric order. Do not skip, duplicate, reorder, merge, split, or invent line numbers. Do not add explanations, markdown, or code fences.
 
-Numbered English transcript:
+Numbered source transcript (any language):
 ${numberedTranscript}`, [numberedTranscript, englishLines.length, durationText]);
   const translationCount = useMemo(() => {
     try {
@@ -98,7 +98,7 @@ ${numberedTranscript}`, [numberedTranscript, englishLines.length, durationText])
 
 Keep names, places, dates, numbers, and important facts accurate. Do not add facts, guess, merge, split, reorder, or invent lines. Keep each line concise enough for its original spoken timestamp; do not fill silent parts or run beyond the video end. Return ONLY valid JSON in this exact format: {"translations":[{"line":1,"text":"ဇာတ်လမ်းအဆက်အစပ်မပျက်တဲ့ သဘာဝကျတဲ့ မြန်မာစာကြောင်း"},{"line":2,"text":"အဖြစ်အပျက်ကို ဆက်စပ်ပြီး နားလည်လွယ်အောင် ပြောထားတဲ့ စာကြောင်း"}]}. Return exactly one non-empty object for EVERY line number from 1 to ${englishLines.length}, in numeric order. Never return a plain string array.
 
-Numbered English source:
+Numbered source transcript (any language):
 ${numberedTranscript}
 
 Current incomplete or overlong output:
@@ -182,13 +182,13 @@ ${jsonOutput}`, [englishLines.length, numberedTranscript, jsonOutput]);
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white"><Languages className="h-5 w-5" /></div>
         <div>
           <h3 className="text-sm font-bold text-slate-900">Custom Burmese Movie-Recap Translation</h3>
-          <p className="mt-1 text-xs leading-5 text-slate-500">English transcript ကိုထည့်ပြီး prompt copy လုပ်ပါ။ AI မှ JSON result ရလာရင် အောက်မှာ paste လုပ်ပြီး video duration မကျော်တဲ့ subtitle timing အဖြစ်သုံးနိုင်ပါတယ်။</p>
+          <p className="mt-1 text-xs leading-5 text-slate-500">တရုတ်၊ ကိုရီးယား၊ အင်္ဂလိပ် စတဲ့ source transcript ကိုထည့်ပြီး prompt copy လုပ်ပါ။ AI မှ JSON result ရလာရင် အောက်မှာ paste လုပ်ပြီး video duration မကျော်တဲ့ subtitle timing အဖြစ်သုံးနိုင်ပါတယ်။</p>
         </div>
       </div>
 
       <div className="space-y-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <label className="flex items-center gap-2 text-xs font-semibold text-slate-700"><FileText className="h-4 w-4 text-indigo-600" /> English transcript</label>
+          <label className="flex items-center gap-2 text-xs font-semibold text-slate-700"><FileText className="h-4 w-4 text-indigo-600" /> Source transcript (any language)</label>
           <div className="flex items-center gap-2">
             <span className="text-xs text-slate-400">{englishLines.length} lines</span>
             <Button size="sm" variant="secondary" onClick={transcribeSourceVideo} disabled={transcribing || !videoUrl}>
@@ -196,7 +196,7 @@ ${jsonOutput}`, [englishLines.length, numberedTranscript, jsonOutput]);
             </Button>
           </div>
         </div>
-        <textarea value={englishTranscript} onChange={(event) => { setEnglishTranscript(event.target.value); setSourceCues([]); setApplied(false); setError(''); }} rows={7} placeholder="English transcript text will appear here..." className="w-full resize-y rounded-xl border border-indigo-300 px-3 py-3 text-sm leading-6 text-slate-800 focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-100" />
+        <textarea value={englishTranscript} onChange={(event) => { setEnglishTranscript(event.target.value); setSourceCues([]); setApplied(false); setError(''); }} rows={7} placeholder="Chinese, Korean, English, or other source transcript..." className="w-full resize-y rounded-xl border border-indigo-300 px-3 py-3 text-sm leading-6 text-slate-800 focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-100" />
         {(transcriptionStatus || transcribing) && <p className="rounded-lg bg-indigo-50 px-3 py-2 text-xs font-medium text-indigo-700">{transcriptionStatus || 'Transcribing... 0%'}</p>}
       </div>
 

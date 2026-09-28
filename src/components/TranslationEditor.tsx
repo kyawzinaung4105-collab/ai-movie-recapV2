@@ -20,10 +20,11 @@ export function TranslationEditor({ sourceCues, voiceId, onTranslationApplied, o
   const [error, setError] = useState('');
 
   const sourceText = useMemo(() => sourceCues.map((cue) => cue.text).join('\n'), [sourceCues]);
-  const translationPrompt = useMemo(() => `You are a Myanmar movie-recap scriptwriter, not a literal translator. Rewrite the following English transcript into clear, natural, conversational Burmese for subtitles and voice narration.
+  const translationPrompt = useMemo(() => `You are a multilingual Myanmar movie-recap scriptwriter, not a literal translator. The source transcript may be Chinese, Korean, English, Japanese, Thai, or another language. Translate every source line into clear, natural, conversational Burmese for subtitles and voice narration.
 
 Rules:
 - Do not translate word-for-word and do not copy English grammar or sentence order.
+- Do not leave Chinese, Korean, English, or any other source-language sentence in the Burmese output; translate its full meaning. Keep names and titles in a readable Burmese transliteration when appropriate.
 - Make the story easy to follow: preserve who did what, why it happened, what changed, the characters' reactions, and the connection between each line.
 - Use familiar everyday Burmese words, natural particles, connectors, and a smooth storyteller voice that ordinary Myanmar viewers can understand.
 - Adapt idioms, jokes, and emotional phrases by meaning instead of translating their individual words.
@@ -31,7 +32,7 @@ Rules:
 - Keep each Burmese line concise enough for its matching timestamp, but do not remove context needed to understand the plot.
 - Keep the same number of non-empty lines and the original order. Return only the Burmese lines, with no numbering, notes, or explanations.
 
-English transcript:
+Source transcript (any language):
 ${sourceText}`, [sourceText]);
   const translatedLines = translation.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
   const isLineCountMatch = translatedLines.length === sourceCues.length;
@@ -42,7 +43,7 @@ ${sourceText}`, [sourceText]);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1800);
     } catch {
-      setError('Could not copy automatically. Select the English transcript and copy it manually.');
+      setError('Could not copy automatically. Select the source transcript and copy it manually.');
     }
   };
 
@@ -52,14 +53,14 @@ ${sourceText}`, [sourceText]);
       setPromptCopied(true);
       window.setTimeout(() => setPromptCopied(false), 1800);
     } catch {
-      setError('Could not copy the prompt automatically. Please copy the English transcript manually.');
+      setError('Could not copy the prompt automatically. Please copy the source transcript manually.');
     }
   };
 
   const applyTranslation = () => {
     setError('');
     if (sourceCues.length === 0) {
-      setError('No timestamped English transcript is available.');
+      setError('No timestamped source transcript is available.');
       return;
     }
     if (!isLineCountMatch) {
@@ -99,9 +100,9 @@ ${sourceText}`, [sourceText]);
           <Languages className="h-5 w-5" />
         </div>
         <div>
-          <h3 className="text-sm font-bold text-slate-900">English Transcript → Burmese Movie Recap</h3>
+          <h3 className="text-sm font-bold text-slate-900">Any-Language Transcript → Burmese Movie Recap</h3>
           <p className="mt-1 text-xs leading-5 text-slate-600">
-            Copy the English transcript, translate it with your preferred AI, then paste one Burmese line per English segment below.
+            Copy the source transcript, translate it with your preferred AI, then paste one Burmese line per source segment below.
           </p>
         </div>
       </div>
@@ -146,7 +147,7 @@ ${sourceText}`, [sourceText]);
       </div>
 
       {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{error}</p>}
-      {applied && <p className="flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-700"><CheckCircle2 className="h-4 w-4" /> Burmese subtitles are synced to the English timestamps.</p>}
+      {applied && <p className="flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-700"><CheckCircle2 className="h-4 w-4" /> Burmese subtitles are synced to the source timestamps.</p>}
 
       <div className="flex flex-col gap-2 sm:flex-row">
         <Button onClick={applyTranslation} disabled={!translation.trim() || sourceCues.length === 0}>
@@ -157,7 +158,7 @@ ${sourceText}`, [sourceText]);
           {generatingVoice ? 'Generating voice...' : 'Generate Burmese Voice'}
         </Button>
       </div>
-      <p className="text-[11px] leading-5 text-slate-500">Tip: Keep the same number of non-empty lines as the English transcript so every Burmese sentence stays aligned with its original timestamp.</p>
+      <p className="text-[11px] leading-5 text-slate-500">Tip: Keep the same number of non-empty lines as the source transcript so every Burmese sentence stays aligned with its original timestamp.</p>
     </section>
   );
 }

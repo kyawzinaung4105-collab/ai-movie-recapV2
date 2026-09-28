@@ -28,7 +28,7 @@ export function SourceTextScreen({ onContinue, onBack }: SourceTextScreenProps) 
       <div className="border-b border-slate-200 pb-5">
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary-600">Step 2</p>
         <h1 className="mt-1 text-2xl font-bold text-slate-900">Source Text</h1>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">Preview your video, create the English source transcript, paste the Burmese translation, and prepare the subtitle style before choosing a voice.</p>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">Preview your video, create a source transcript in any language, translate it into natural Burmese, and prepare the subtitle style before choosing a voice.</p>
       </div>
 
       <CustomTranslationWorkflow

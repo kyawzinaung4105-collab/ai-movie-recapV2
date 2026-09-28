@@ -77,7 +77,7 @@ def transcribe():
             "/v2/transcript",
             api_key,
             method="POST",
-            json={"audio_url": upload_url, "language_code": "en", "punctuate": True, "format_text": True},
+            json={"audio_url": upload_url, "language_detection": True, "punctuate": True, "format_text": True},
         ).json()
         transcript_id = created.get("id")
         if not transcript_id:
