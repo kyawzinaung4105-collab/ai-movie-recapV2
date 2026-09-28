@@ -51,8 +51,16 @@ export function CustomTranslationWorkflow({ duration, videoUrl, videoFile, onTra
   const numberedTranscript = useMemo(() => englishLines.map((line, index) => `[${index + 1}] ${line}`).join('\n'), [englishLines]);
   const durationSeconds = Math.max(1, duration || 0);
   const durationText = durationSeconds >= 60 ? `${Math.floor(durationSeconds / 60)} minutes ${Math.round(durationSeconds % 60)} seconds` : `${Math.round(durationSeconds)} seconds`;
-  const perLineSeconds = englishLines.length > 0 ? Math.max(1, durationSeconds / englishLines.length) : 0;
-  const prompt = useMemo(() => `You are a professional movie recap subtitle writer and Burmese sports-news narrator. Rewrite each numbered English line as concise, natural, conversational Burmese that sounds like a real Myanmar football commentator speaking. Do NOT translate word-for-word or preserve English grammar. Use natural Burmese sentence order, particles, connectors, and movie-recap expressions. Preserve the story's narrative flow: the opening context, who did what, cause and effect, turning points, emotional tone, important reactions, and the logical connection between one line and the next. Do not shorten by deleting the context that makes the story understandable. Preserve the essential meaning and every important fact: character names, locations, dates, places, and important story terms. Remove only repetition, filler words, unnecessary explanations, and awkward literal wording so each line is shorter but still feels like part of the same story. Do not add facts, guess missing information, invent events, or make the narration sound like disconnected headlines. The video is ${durationText} long, but subtitles and narration MUST appear ONLY during the original spoken timestamp intervals. Do not create subtitles or voice during silent/non-speaking parts. Each line MUST be short enough to fit its own spoken interval, and the total narration MUST NOT run beyond the video end. Do not create extra content just to fill silent parts. Keep each numbered line as one subtitle unit. Every text value must contain a non-empty Burmese translation; never return an empty string. Return ONLY valid JSON in this exact format: {"translations":[{"line":1,"text":"ဇာတ်လမ်းအဆက်အစပ်မပျက်တဲ့ တိုတောင်းပြီး သဘာဝကျတဲ့ မြန်မာစာကြောင်း"},{"line":2,"text":"နောက်ထပ် ဆက်စပ်မှုရှိတဲ့ စာကြောင်း"}]}. You MUST return exactly one object for every line number from 1 to ${englishLines.length}; do not skip, duplicate, reorder, or invent line numbers. Do not add explanations, markdown, or code fences.\n\nNumbered English transcript:\n${numberedTranscript}`, [numberedTranscript, englishLines.length, durationText, perLineSeconds]);
+  const prompt = useMemo(() => `You are a Myanmar movie-recap scriptwriter. Rewrite each numbered English line into concise, natural, conversational Burmese for subtitles and voice narration.
+
+This is adaptation by meaning, NOT word-for-word translation. Do not copy English grammar, sentence order, or stiff machine-translation vocabulary. Write as a skilled Myanmar narrator telling one connected story to ordinary viewers: use familiar everyday words, natural Burmese particles and connectors, and make the cause-and-effect, turning points, emotions, and character reactions easy to follow. Adapt idioms, jokes, and emotional phrases by meaning. Keep names, places, dates, numbers, and important story facts accurate. Do not add facts, guess missing information, or turn the story into disconnected headlines.
+
+Keep only useful repetition and filler out; never remove context needed to understand what happened. Each line must stay short enough for its own spoken timestamp interval. The video is ${durationText} long, but subtitles and narration MUST appear ONLY during the original spoken timestamp intervals. Do not fill silent parts or run beyond the video end. Keep each numbered line as one subtitle unit. Every text value must be a non-empty Burmese translation.
+
+Return ONLY valid JSON in this exact format: {"translations":[{"line":1,"text":"ဇာတ်လမ်းအဆက်အစပ်မပျက်တဲ့ သဘာဝကျတဲ့ မြန်မာစာကြောင်း"},{"line":2,"text":"အဖြစ်အပျက်ကို ဆက်စပ်ပြီး နားလည်လွယ်အောင် ပြောထားတဲ့ စာကြောင်း"}]}. Return exactly one object for every line number from 1 to ${englishLines.length}, in numeric order. Do not skip, duplicate, reorder, merge, split, or invent line numbers. Do not add explanations, markdown, or code fences.
+
+Numbered English transcript:
+${numberedTranscript}`, [numberedTranscript, englishLines.length, durationText]);
   const translationCount = useMemo(() => {
     try {
       const match = jsonOutput.match(/\{[\s\S]*\}/);
@@ -86,7 +94,15 @@ export function CustomTranslationWorkflow({ duration, videoUrl, videoFile, onTra
     if (emptyLine) throw new Error(`Burmese translation line ${emptyLine.line || '?'} မှာ အလွတ်စာကြောင်းရှိပါတယ်။`);
     return items.map((item) => item.text);
   };
-  const correctionPrompt = useMemo(() => `The previous Burmese subtitle output is incomplete, too long, or has a wrong line mapping. Regenerate the COMPLETE result in concise, natural, conversational Burmese movie-recap style, not word-for-word Burmese. Subtitles and narration MUST appear ONLY during the original spoken timestamp intervals; do not fill silent/non-speaking parts. The narration must not run beyond the video end. Shorten only repetition, filler, and awkward wording; preserve the story's opening context, cause-and-effect, turning points, reactions, emotional tone, and logical connection between lines. The result must still feel like one complete movie story, not disconnected short headlines. Compare the numbered English source with the current output. Restore missing lines, but do not add facts, merge lines, split lines, reorder, invent, or change character names, locations, dates, or places. Each line must be short enough for its assigned subtitle interval. Return ONLY valid JSON in this exact format: {"translations":[{"line":1,"text":"ဇာတ်လမ်းအဆက်အစပ်မပျက်တဲ့ တိုတောင်းပြီး သဘာဝကျတဲ့ စာကြောင်း"},{"line":2,"text":"နောက်ထပ် ဆက်စပ်မှုရှိတဲ့ စာကြောင်း"}]}. Return exactly one non-empty object for EVERY line number from 1 to ${englishLines.length}, in numeric order. Never return a plain string array.\n\nNumbered English source:\n${numberedTranscript}\n\nCurrent incomplete or overlong output:\n${jsonOutput}`, [englishLines.length, numberedTranscript, jsonOutput, durationText]);
+  const correctionPrompt = useMemo(() => `The previous Burmese subtitle output is incomplete, too long, awkward, or mapped to the wrong lines. Regenerate the COMPLETE result as natural, easy-to-understand Burmese movie-recap narration, not a word-for-word translation. Rewrite by meaning with familiar everyday Burmese words, natural sentence order, particles, and connectors. Restore the story's context, cause-and-effect, turning points, reactions, emotional tone, and logical connection between lines. It must sound like one connected story, not disconnected headlines.
+
+Keep names, places, dates, numbers, and important facts accurate. Do not add facts, guess, merge, split, reorder, or invent lines. Keep each line concise enough for its original spoken timestamp; do not fill silent parts or run beyond the video end. Return ONLY valid JSON in this exact format: {"translations":[{"line":1,"text":"ဇာတ်လမ်းအဆက်အစပ်မပျက်တဲ့ သဘာဝကျတဲ့ မြန်မာစာကြောင်း"},{"line":2,"text":"အဖြစ်အပျက်ကို ဆက်စပ်ပြီး နားလည်လွယ်အောင် ပြောထားတဲ့ စာကြောင်း"}]}. Return exactly one non-empty object for EVERY line number from 1 to ${englishLines.length}, in numeric order. Never return a plain string array.
+
+Numbered English source:
+${numberedTranscript}
+
+Current incomplete or overlong output:
+${jsonOutput}`, [englishLines.length, numberedTranscript, jsonOutput]);
 
   const copyFullPrompt = async () => {
     try {
@@ -165,7 +181,7 @@ export function CustomTranslationWorkflow({ duration, videoUrl, videoFile, onTra
       <div className="flex items-start gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white"><Languages className="h-5 w-5" /></div>
         <div>
-          <h3 className="text-sm font-bold text-slate-900">Custom Football Translation Workflow</h3>
+          <h3 className="text-sm font-bold text-slate-900">Custom Burmese Movie-Recap Translation</h3>
           <p className="mt-1 text-xs leading-5 text-slate-500">English transcript ကိုထည့်ပြီး prompt copy လုပ်ပါ။ AI မှ JSON result ရလာရင် အောက်မှာ paste လုပ်ပြီး video duration မကျော်တဲ့ subtitle timing အဖြစ်သုံးနိုင်ပါတယ်။</p>
         </div>
       </div>

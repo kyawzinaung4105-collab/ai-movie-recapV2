@@ -144,16 +144,23 @@ export async function analyzeVideoAndGenerateScript(
   language: 'myanmar' | 'english'
 ): Promise<TranslationResult> {
   const systemPrompt =
-    'You are a professional video analyst and translator. ' +
-    'You analyze football video content, identify the match, teams, competition or news topic, ' +
-    'transcribe the dialogue, and translate it into natural ' +
-    (language === 'myanmar' ? 'Burmese (Myanmar) language' : 'English') +
-    '. You return results as JSON only.';
+    'You are a professional video analyst, movie-recap scriptwriter, and translator. ' +
+    'Return JSON only. When the target language is Burmese, write for ordinary Myanmar viewers: use clear, conversational Myanmar wording and a smooth narrator voice, not a dictionary or word-for-word translation. ' +
+    'Rebuild the sentence naturally in Burmese, preserve cause-and-effect and emotional tone, and explain idioms or culturally specific phrases by meaning. ' +
+    'Keep names, places, dates, and important facts accurate; do not invent details or use stiff machine-translation terms.';
 
   const prompt = `Analyze this video and provide:
 1. A concise movie recap headline or match title (best guess)
 2. A complete transcription of all dialogue/voiceover
 3. A ${language === 'myanmar' ? 'Burmese' : 'English'} translation of the dialogue
+
+Translation and writing rules:
+- ${language === 'myanmar' ? 'Write natural, easy-to-understand Burmese as if a skilled Myanmar movie-recap narrator is telling the story to friends. Do not translate word-for-word or copy English grammar.' : 'Write natural, fluent English rather than a literal translation.'}
+- Keep the story connected: introduce the situation, show who did what, and make cause, consequence, reactions, and turning points clear across adjacent segments.
+- Prefer familiar everyday words over formal, obscure, or machine-translated vocabulary. Use natural Burmese particles, connectors, and sentence order.
+- Adapt idioms, jokes, and emotional phrases by meaning. Do not leave awkward English structures in the target text.
+- Keep character names, team names, locations, dates, numbers, and important story facts unchanged or in a readable transliteration. Never add facts, guesses, or commentary.
+- Keep each segment concise enough to be spoken during its time range, while retaining the context needed to understand the plot.
 
 Return ONLY valid JSON in this exact format:
 {
@@ -168,7 +175,7 @@ Return ONLY valid JSON in this exact format:
 Rules:
 - Each segment should be 3-8 seconds long
 - "text" must be the ${language === 'myanmar' ? 'Burmese' : 'English'} translation
-- Use natural, fluent ${language === 'myanmar' ? 'Burmese' : 'English'}
+- Use the natural, audience-friendly ${language === 'myanmar' ? 'Burmese' : 'English'} style described above
 - Cover the entire video duration
 - If you cannot identify the match or news topic, use "Football News" and set titleConfident to false`;
 

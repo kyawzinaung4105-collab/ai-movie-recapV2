@@ -20,7 +20,19 @@ export function TranslationEditor({ sourceCues, voiceId, onTranslationApplied, o
   const [error, setError] = useState('');
 
   const sourceText = useMemo(() => sourceCues.map((cue) => cue.text).join('\n'), [sourceCues]);
-  const translationPrompt = useMemo(() => `Translate the following English movie recap transcript into natural Burmese for narration and subtitles. Keep the same number of non-empty lines, keep the original order, do not add numbering or explanations, and return only the Burmese lines.\n\n${sourceText}`, [sourceText]);
+  const translationPrompt = useMemo(() => `You are a Myanmar movie-recap scriptwriter, not a literal translator. Rewrite the following English transcript into clear, natural, conversational Burmese for subtitles and voice narration.
+
+Rules:
+- Do not translate word-for-word and do not copy English grammar or sentence order.
+- Make the story easy to follow: preserve who did what, why it happened, what changed, the characters' reactions, and the connection between each line.
+- Use familiar everyday Burmese words, natural particles, connectors, and a smooth storyteller voice that ordinary Myanmar viewers can understand.
+- Adapt idioms, jokes, and emotional phrases by meaning instead of translating their individual words.
+- Keep names, places, dates, numbers, and important facts accurate. Do not invent, omit, or add explanations.
+- Keep each Burmese line concise enough for its matching timestamp, but do not remove context needed to understand the plot.
+- Keep the same number of non-empty lines and the original order. Return only the Burmese lines, with no numbering, notes, or explanations.
+
+English transcript:
+${sourceText}`, [sourceText]);
   const translatedLines = translation.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
   const isLineCountMatch = translatedLines.length === sourceCues.length;
 
@@ -87,7 +99,7 @@ export function TranslationEditor({ sourceCues, voiceId, onTranslationApplied, o
           <Languages className="h-5 w-5" />
         </div>
         <div>
-          <h3 className="text-sm font-bold text-slate-900">English Transcript → Burmese News</h3>
+          <h3 className="text-sm font-bold text-slate-900">English Transcript → Burmese Movie Recap</h3>
           <p className="mt-1 text-xs leading-5 text-slate-600">
             Copy the English transcript, translate it with your preferred AI, then paste one Burmese line per English segment below.
           </p>
