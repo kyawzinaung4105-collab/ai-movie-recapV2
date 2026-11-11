@@ -1,14 +1,14 @@
 import { useState } from 'react';
-import { BookOpen, Check, Clock3, Film, History, LayoutDashboard, Link2, Menu, Play, Settings, SlidersHorizontal, Sparkles, Upload, UserRound, Video, WalletCards, X, Zap } from 'lucide-react';
+import { BookOpen, Check, Clock3, Film, History, LayoutDashboard, Link2, Loader2, Menu, Play, Settings, SlidersHorizontal, Sparkles, Upload, UserRound, Video, WalletCards, X, Zap } from 'lucide-react';
 import { RecapProvider, useRecap } from '@/context/RecapContext';
 import { VideoUpload } from '@/components/VideoUpload';
 import { VideoLinkInput } from '@/components/VideoLinkInput';
 import { ResultScreen } from '@/components/ResultScreen';
-import { SourceTextScreen } from '@/components/SourceTextScreen';
-import { VoiceSelector } from '@/components/VoiceSelector';
 import { SettingsModal } from '@/components/SettingsModal';
 import { Button } from '@/components/ui/Button';
 import { getEnvConfig } from '@/lib/env';
+import { runGenerationPipeline } from '@/lib/generationPipeline';
+import type { GenerationStage } from '@/types';
 import type { InputMethod, Language, VideoSource } from '@/types';
 
 type StudioMode = 'auto' | 'pro' | 'subtitle';
@@ -27,15 +27,60 @@ function ControlPanel({ mode, setMode, ratio, setRatio, language, setLanguage, m
 }
 
 function Dashboard() {
-  const { step, setStep, videoSource, setVideoSource, language, setLanguage, customAudioUrl, setCustomAudioUrl, customCues } = useRecap();
-  const [mode, setMode] = useState<StudioMode>('auto'); const [ratio, setRatio] = useState<Ratio>('original'); const [mirror, setMirror] = useState(false); const [zoom, setZoom] = useState(100); const [sourceLanguage, setSourceLanguage] = useState('auto'); const [notice, setNotice] = useState('');
-  if (step === 'recap-select' && videoSource) return <SourceTextScreen onContinue={() => setStep('voice')} onBack={() => setStep('input')} />;
-  if (step === 'voice') return <VoiceSelector audioUrl={customAudioUrl} translatedCues={customCues} onAudioSelected={setCustomAudioUrl} onContinue={() => setStep('result')} onBack={() => setStep('recap-select')} />;
-  if (step === 'result') return <ResultScreen />;
-  const startRender = () => { if (!videoSource) { setNotice('အရင်ဆုံး video ဖိုင် သို့မဟုတ် link တစ်ခု ရွေးပါ။'); return; } setNotice(mode === 'pro' ? 'Pro AI Recap အတွက် source transcript ပြင်ဆင်နေပါတယ်...' : 'AI Recap အတွက် source transcript ပြင်ဆင်နေပါတယ်...'); setStep('recap-select'); };
-  return <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_330px]"><section className="min-w-0"><div className="mb-5 flex items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.2em] text-indigo-600">Studio / Auto Recap</p><h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">Turn a clip into a story</h1><p className="mt-2 max-w-xl text-sm text-slate-500">Upload a clip or paste a social video link, then create a Burmese movie recap with captions and narration.</p></div><div className="hidden rounded-2xl border border-indigo-100 bg-indigo-50 px-3 py-2 text-right sm:block"><p className="text-[10px] font-bold uppercase tracking-wider text-indigo-500">Mode</p><p className="text-sm font-bold text-indigo-900">{mode === 'subtitle' ? 'Subtitle Mode' : mode === 'pro' ? 'Pro AI Recap' : 'AI Recap'}</p></div></div><StudioUpload onSource={(source) => { setVideoSource(source); setNotice('Video ready. Review the settings and start render.'); }} /><div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm"><div className="flex flex-wrap items-center gap-2 text-xs text-slate-500"><span className="rounded-lg bg-slate-100 px-2 py-1">{ratio === 'original' ? 'Original ratio' : ratio}</span><span className="rounded-lg bg-slate-100 px-2 py-1">{languageLabels[language]}</span><span className={`rounded-lg px-2 py-1 ${videoSource ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100'}`}>{videoSource ? <><Check className="mr-1 inline h-3 w-3" />Video ready</> : 'No video selected'}</span></div><Button size="lg" onClick={startRender}><Play className="h-4 w-4 fill-current" />Start render</Button></div>{notice && <p className="mt-3 rounded-xl bg-indigo-50 px-4 py-3 text-sm text-indigo-700">{notice}</p>}</section><ControlPanel mode={mode} setMode={setMode} ratio={ratio} setRatio={setRatio} language={language} setLanguage={setLanguage} mirror={mirror} setMirror={setMirror} zoom={zoom} setZoom={setZoom} sourceLanguage={sourceLanguage} setSourceLanguage={setSourceLanguage} /></div>;
-}
+  const {
+    step, setStep, videoSource, setVideoSource, language, setLanguage,
+    setGenerationStage, setGenerationResult, setMovieTitle, setCaptionSettings, captionSettings,
+  } = useRecap();
+  const [mode, setMode] = useState<StudioMode>('auto');
+  const [ratio, setRatio] = useState<Ratio>('original');
+  const [mirror, setMirror] = useState(false);
+  const [zoom, setZoom] = useState(100);
+  const [sourceLanguage, setSourceLanguage] = useState('auto');
+  const [notice, setNotice] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
 
+  if (step === 'result') return <ResultScreen />;
+
+  const startRender = async () => {
+    if (!videoSource) {
+      setNotice('အရင်ဆုံး video ဖိုင် သို့မဟုတ် link တစ်ခု ရွေးပါ။');
+      return;
+    }
+    setIsGenerating(true);
+    setNotice('Video ကို စစ်ဆေးပြီး မြန်မာစာတန်းထိုးနဲ့ voice ပြင်ဆင်နေပါတယ်...');
+    setGenerationStage('analyzing');
+    try {
+      const result = await runGenerationPipeline(
+        { videoSource, language, voiceId: '21m00Tcm4TlvDq8ikWAM' },
+        (stage) => {
+          setGenerationStage(stage as GenerationStage);
+          const labels: Record<string, string> = {
+            analyzing: 'Video ကို AI က ခွဲခြမ်းစိတ်ဖြာနေပါတယ်...',
+            translating: 'မြန်မာဘာသာပြန်နဲ့ စာတန်းထိုး ပြင်ဆင်နေပါတယ်...',
+            synthesizing: 'မြန်မာ voice ထုတ်နေပါတယ်...',
+            'preparing-subtitles': 'စာတန်းထိုးနဲ့ final video ပြင်ဆင်နေပါတယ်...',
+            complete: 'ပြီးပါပြီ။ Video ကို review/export လုပ်နိုင်ပါပြီ။',
+          };
+          setNotice(labels[stage] || 'Video ကို ပြင်ဆင်နေပါတယ်...');
+        },
+      );
+      setGenerationResult(result);
+      setMovieTitle(result.movieTitle);
+      setCaptionSettings({ ...captionSettings, enabled: true, cues: result.cues });
+      setGenerationStage('complete');
+      setNotice('ပြီးပါပြီ။ မြန်မာ voice နဲ့ စာတန်းထိုးပါပြီးသား result ကို ပြင်ဆင်ထားပါတယ်။');
+      setStep('result');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Video generation မအောင်မြင်ပါ။';
+      setGenerationStage('error');
+      setNotice(message);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  return <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_330px]"><section className="min-w-0"><div className="mb-5 flex items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.2em] text-indigo-600">Studio / Auto Recap</p><h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">Turn a clip into a story</h1><p className="mt-2 max-w-xl text-sm text-slate-500">Upload a clip or paste a social video link, then create a Burmese movie recap with captions and narration.</p></div><div className="hidden rounded-2xl border border-indigo-100 bg-indigo-50 px-3 py-2 text-right sm:block"><p className="text-[10px] font-bold uppercase tracking-wider text-indigo-500">Mode</p><p className="text-sm font-bold text-indigo-900">{mode === 'subtitle' ? 'Subtitle Mode' : mode === 'pro' ? 'Pro AI Recap' : 'AI Recap'}</p></div></div><StudioUpload onSource={(source) => { setVideoSource(source); setNotice('Video ready. Start render နှိပ်လိုက်ရင် မြန်မာ voice နဲ့ စာတန်းထိုးကို တစ်ခါတည်း ပြုလုပ်ပါမယ်။'); }} /><div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm"><div className="flex flex-wrap items-center gap-2 text-xs text-slate-500"><span className="rounded-lg bg-slate-100 px-2 py-1">{ratio === 'original' ? 'Original ratio' : ratio}</span><span className="rounded-lg bg-slate-100 px-2 py-1">{languageLabels[language]}</span><span className={`rounded-lg px-2 py-1 ${videoSource ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100'}`}>{videoSource ? <><Check className="mr-1 inline h-3 w-3" />Video ready</> : 'No video selected'}</span></div><Button size="lg" onClick={startRender} disabled={isGenerating}>{isGenerating ? <><Loader2 className="h-4 w-4 animate-spin" />Processing...</> : <><Play className="h-4 w-4 fill-current" />Start render</>}</Button></div>{notice && <p className="mt-3 flex items-center gap-2 rounded-xl bg-indigo-50 px-4 py-3 text-sm text-indigo-700">{isGenerating && <Loader2 className="h-4 w-4 animate-spin" />}{notice}</p>}</section><ControlPanel mode={mode} setMode={setMode} ratio={ratio} setRatio={setRatio} language={language} setLanguage={setLanguage} mirror={mirror} setMirror={setMirror} zoom={zoom} setZoom={setZoom} sourceLanguage={sourceLanguage} setSourceLanguage={setSourceLanguage} /></div>;
+}
 function AppContent() {
   const [activeNav, setActiveNav] = useState<NavItem>('auto'); const [settingsOpen, setSettingsOpen] = useState(false); const [mobileOpen, setMobileOpen] = useState(false); const envConfig = getEnvConfig();
   const navItems: { id: NavItem; label: string; hint: string; icon: typeof LayoutDashboard }[] = [{ id: 'manual', label: 'Manual Editor', hint: 'Free · translate with Gemini', icon: SlidersHorizontal }, { id: 'auto', label: 'Auto Recap', hint: '1-Click Premium Auto Mode', icon: Sparkles }, { id: 'history', label: 'Job History', hint: 'Saved Videos', icon: History }, { id: 'usage', label: 'Usage', hint: 'Videos, minutes, credits', icon: WalletCards }];

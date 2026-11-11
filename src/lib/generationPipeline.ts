@@ -78,6 +78,9 @@ export async function runGenerationPipeline(
   if (!keys.aiKey) {
     throw new Error('AI API key is missing. Please add your key in Settings.');
   }
+  if (!keys.elevenLabsKey) {
+    throw new Error('ElevenLabs API key is missing. Add it in Settings to generate Burmese voice automatically.');
+  }
 
   // ---- Stage 1: Analyze video ----
   if (onProgress) onProgress('analyzing');
@@ -115,12 +118,14 @@ export async function runGenerationPipeline(
   let narrationUrl: string | undefined;
   const fullScript = analysis.segments.map((s) => s.text).join(' ');
 
-  if (keys.elevenLabsKey && voiceId && fullScript) {
-    try {
-      narrationUrl = await generateElevenLabsVoiceover(fullScript, voiceId);
-    } catch (err) {
-      console.error('Voiceover generation failed:', err);
-    }
+  if (!voiceId || !fullScript) {
+    throw new Error('Burmese narration script or voice is missing.');
+  }
+  try {
+    narrationUrl = await generateElevenLabsVoiceover(fullScript, voiceId);
+  } catch (err) {
+    console.error('Voiceover generation failed:', err);
+    throw new Error('Burmese voice generation failed. Check the ElevenLabs key and try again.');
   }
 
   // ---- Stage 4: Build caption cues ----
