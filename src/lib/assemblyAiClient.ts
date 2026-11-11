@@ -1,7 +1,6 @@
 import { loadApiKeys } from './settingsStore';
 import type { CaptionCue } from '@/types';
 import { FFmpeg } from '@ffmpeg/ffmpeg';
-import { fetchFile } from '@ffmpeg/util';
 
 interface AssemblyWord {
   text?: string;

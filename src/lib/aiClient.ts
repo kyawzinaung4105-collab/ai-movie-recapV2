@@ -1,4 +1,5 @@
-import { loadApiKeys, isGeminiProvider, type ApiKeys, type AiProvider } from './settingsStore';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { loadApiKeys, isGeminiProvider, type ApiKeys } from './settingsStore';
 
 export interface TranscriptSegment {
   start: number;

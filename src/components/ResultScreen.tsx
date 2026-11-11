@@ -21,7 +21,6 @@ export function ResultScreen() {
     setCaptionSettings,
     customAudioUrl,
     customCues,
-    setCustomCues,
     logoSettings,
     setLogoSettings,
     resetAll,
