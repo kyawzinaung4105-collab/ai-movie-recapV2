@@ -87,6 +87,8 @@ export interface GenerationResult {
   movieTitle: string;
   titleConfident: boolean;
   script: string;
+  caption?: string;
+  hashtags?: string[];
   narrationUrl?: string;
   generatedVideoUrl?: string;
   segments?: { start: number; end: number; text: string }[];

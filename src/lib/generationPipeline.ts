@@ -26,6 +26,8 @@ export interface GenerationResult {
   movieTitle: string;
   titleConfident: boolean;
   script: string;
+  caption?: string;
+  hashtags?: string[];
   narrationUrl?: string;
   segments: TranscriptSegment[];
   cues: CaptionCue[];
@@ -144,6 +146,8 @@ export async function runGenerationPipeline(
     movieTitle: analysis.movieTitle,
     titleConfident: analysis.titleConfident,
     script: fullScript,
+    caption: analysis.caption,
+    hashtags: analysis.hashtags,
     narrationUrl,
     segments: analysis.segments,
     cues,

@@ -12,6 +12,8 @@ export interface TranslationResult {
   segments: TranscriptSegment[];
   movieTitle: string;
   titleConfident: boolean;
+  caption: string;
+  hashtags: string[];
 }
 
 function getKeys(): ApiKeys {
@@ -164,10 +166,16 @@ Translation and writing rules:
 - Keep character names, team names, locations, dates, numbers, and important story facts unchanged or in a readable transliteration. Never add facts, guesses, or commentary.
 - Keep each segment concise enough to be spoken during its time range, while retaining the context needed to understand the plot.
 
+Post metadata rules:
+- "caption" must be one curious Burmese line that does not reveal the ending and ends with exactly one emoji.
+- "hashtags" must contain exactly five Burmese story hashtags, each starting with #, with no spaces inside a tag. Never include #fyp.
+
 Return ONLY valid JSON in this exact format:
 {
   "movieTitle": "the movie recap headline",
   "titleConfident": true,
+  "caption": "စိတ်ဝင်စားစရာ မြန်မာ caption တစ်ကြောင်း 😳",
+  "hashtags": ["#ဇာတ်လမ်း", "#အချစ်ဇာတ်လမ်း", "#ဒရာမာ", "#မြန်မာစာတန်းထိုး", "#ရုပ်ရှင်"],
   "segments": [
     { "start": 0.0, "end": 5.0, "text": "translated dialogue segment" },
     { "start": 5.0, "end": 10.0, "text": "another segment" }
@@ -200,6 +208,8 @@ Rules:
     })),
     movieTitle: String(parsed.movieTitle || 'Football News'),
     titleConfident: Boolean(parsed.titleConfident),
+    caption: String(parsed.caption || ''),
+    hashtags: Array.isArray(parsed.hashtags) ? parsed.hashtags.map((tag: unknown) => String(tag)).filter(Boolean).slice(0, 5) : [],
   };
 }
 

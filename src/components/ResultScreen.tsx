@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { RotateCcw } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Check, Copy, Download, Film, Hash, MessageSquareText, RotateCcw, Sparkles } from 'lucide-react';
 import { useRecap } from '@/context/RecapContext';
 import { MovieTitleEditor } from '@/components/MovieTitleEditor';
 import { FinalPreview } from '@/components/FinalPreview';
@@ -9,6 +9,7 @@ import { CaptionEditor } from '@/components/CaptionEditor';
 import { Button } from '@/components/ui/Button';
 
 export function ResultScreen() {
+  const [copiedAll, setCopiedAll] = useState(false);
   const {
     videoSource,
     setStep,
@@ -41,6 +42,15 @@ export function ResultScreen() {
   const exportSubtitles = customCues.length > 0
     ? customCues
     : (generationResult?.cues || captionSettings.cues);
+  const postCaption = generationResult?.caption || 'ဒီဇာတ်လမ်းရဲ့ နောက်ဆုံးအဖြစ်အပျက်ကို ခန့်မှန်းနိုင်မလား? 😳';
+  const postHashtags = generationResult?.hashtags?.length === 5
+    ? generationResult.hashtags
+    : ['#ဇာတ်လမ်း', '#အချစ်ဇာတ်လမ်း', '#ဒရာမာ', '#မြန်မာစာတန်းထိုး', '#ရုပ်ရှင်'];
+  const copyAll = async () => {
+    await navigator.clipboard.writeText(`${movieTitle}\n\n${postCaption}\n\n${postHashtags.join(' ')}`);
+    setCopiedAll(true);
+    window.setTimeout(() => setCopiedAll(false), 1800);
+  };
 
   return (
     <div className="mx-auto max-w-5xl space-y-10 animate-fade-in">
@@ -65,6 +75,39 @@ export function ResultScreen() {
           </p>
         </div>
       )}
+
+      <section className="grid gap-5 rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm sm:p-5 lg:grid-cols-[290px_minmax(0,1fr)]">
+        <div className="space-y-3">
+          <div className="relative flex aspect-[9/16] items-center justify-center overflow-hidden rounded-2xl bg-slate-950">
+            {videoSource.objectUrl ? (
+              <video src={videoSource.objectUrl} className="h-full w-full object-cover" muted playsInline controls />
+            ) : (
+              <div className="text-center text-slate-400"><Film className="mx-auto h-10 w-10" /><p className="mt-2 text-xs">Video preview</p></div>
+            )}
+          </div>
+          <Button size="lg" className="w-full" onClick={() => document.getElementById('video-export')?.scrollIntoView({ behavior: 'smooth' })}>
+            <Download className="h-4 w-4" /> Download video
+          </Button>
+          <div className="grid grid-cols-2 gap-2"><Button variant="secondary" size="sm" onClick={() => setStep('input')}>Edit again</Button><Button variant="ghost" size="sm" onClick={resetAll}>New video</Button></div>
+        </div>
+        <div className="space-y-3">
+          <div className="rounded-2xl border border-slate-200 p-4">
+            <div className="flex items-center justify-between gap-3"><h3 className="flex items-center gap-2 font-bold text-slate-900"><Sparkles className="h-4 w-4 text-indigo-600" />Thumbnail</h3><span className="rounded-md bg-indigo-50 px-2 py-1 text-[10px] font-bold text-indigo-600">AI</span></div>
+            <div className="mt-3 flex min-h-24 items-center justify-center rounded-xl bg-gradient-to-br from-slate-900 via-indigo-950 to-rose-900 px-4 text-center text-lg font-black text-white">{movieTitle}</div>
+            <p className="mt-2 text-xs text-slate-400">One thumbnail per platform · edit and download below</p>
+          </div>
+          <div className="rounded-2xl border border-slate-200 p-4">
+            <div className="flex items-center justify-between gap-3"><h3 className="flex items-center gap-2 font-bold text-slate-900"><MessageSquareText className="h-4 w-4 text-indigo-600" />Caption</h3><button onClick={() => navigator.clipboard.writeText(postCaption)} className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600">Copy</button></div>
+            <p className="mt-3 text-sm leading-6 text-slate-700">{postCaption}</p>
+          </div>
+          <div className="rounded-2xl border border-slate-200 p-4">
+            <div className="flex items-center justify-between gap-3"><h3 className="flex items-center gap-2 font-bold text-slate-900"><Hash className="h-4 w-4 text-indigo-600" />Hashtags</h3><button onClick={copyAll} className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600">{copiedAll ? 'Copied' : 'Copy'}</button></div>
+            <div className="mt-3 flex flex-wrap gap-2">{postHashtags.map((tag) => <span key={tag} className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">{tag}</span>)}</div>
+            <p className="mt-2 text-xs text-slate-400">Tap a hashtag to remove it</p>
+          </div>
+          <button onClick={copyAll} className="flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50">{copiedAll ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />} {copiedAll ? 'Copied all' : 'Copy all'}</button>
+        </div>
+      </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <MovieTitleEditor
@@ -100,7 +143,7 @@ export function ResultScreen() {
         />
       </div>
 
-      <section className="rounded-2xl border border-primary-200 bg-primary-50/40 p-5 shadow-sm sm:p-6">
+      <section id="video-export" className="rounded-2xl border border-primary-200 bg-primary-50/40 p-5 shadow-sm sm:p-6">
         <VideoExporter
           movieTitle={movieTitle}
           videoBlobUrl={exportVideoUrl}
