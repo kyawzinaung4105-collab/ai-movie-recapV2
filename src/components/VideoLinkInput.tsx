@@ -74,24 +74,25 @@ export function VideoLinkInput({ onVideoLoaded }: VideoLinkInputProps) {
     setLoadedSource(null);
     setTikTokShortUrl(null);
 
+    const normalizedUrl = /^https?:\/\//i.test(url.trim()) ? url.trim() : `https://${url.trim()}`;
     if (!url.trim()) {
       setError('Please enter a video link.');
       return;
     }
 
-    if (!isValidVideoUrl(url)) {
+    if (!isValidVideoUrl(normalizedUrl)) {
       setError('Invalid video link');
       return;
     }
 
-    const detected = detectPlatform(url);
+    const detected = detectPlatform(normalizedUrl);
     if (detected === 'unknown') {
       setError('Please enter a valid YouTube, TikTok, or Rednote video link.');
       return;
     }
 
     setLoading(true);
-    const embed = getEmbedUrl(url, detected);
+    const embed = getEmbedUrl(normalizedUrl, detected);
 
     setTimeout(() => {
       setLoading(false);
@@ -99,6 +100,7 @@ export function VideoLinkInput({ onVideoLoaded }: VideoLinkInputProps) {
         method: 'link',
         fileName: getPlatformLabel(detected) + ' Video',
         platform: detected,
+        sourceUrl: normalizedUrl,
         embedUrl: embed || undefined,
         isDirectFile: false,
       };
@@ -107,9 +109,9 @@ export function VideoLinkInput({ onVideoLoaded }: VideoLinkInputProps) {
 
       if (embed) {
         setEmbedUrl(embed);
-      } else if (detected === 'tiktok' && isTikTokShortLink(url)) {
+      } else if (detected === 'tiktok' && isTikTokShortLink(normalizedUrl)) {
         // TikTok short link — use official embed script
-        setTikTokShortUrl(url.trim());
+        setTikTokShortUrl(normalizedUrl);
       } else {
         setError('Video unavailable or cannot be accessed.');
       }

@@ -28,6 +28,7 @@ export interface VideoSource {
   fileName: string;
   file?: File;
   platform?: Platform;
+  sourceUrl?: string;
   embedUrl?: string;
   objectUrl?: string;
   duration?: number;

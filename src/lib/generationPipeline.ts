@@ -11,6 +11,7 @@ export interface GenerationOptions {
     method: 'upload' | 'link';
     fileName: string;
     objectUrl?: string;
+    sourceUrl?: string;
     embedUrl?: string;
     platform?: string;
     duration?: number;
@@ -92,8 +93,8 @@ export async function runGenerationPipeline(
     } catch {
       throw new Error('Failed to read uploaded video file.');
     }
-  } else if (videoSource.method === 'link' && videoSource.embedUrl) {
-    videoBase64 = await fetchUrlToBase64(videoSource.embedUrl);
+  } else if (videoSource.method === 'link' && (videoSource.embedUrl || videoSource.sourceUrl)) {
+    videoBase64 = await fetchUrlToBase64(videoSource.embedUrl || videoSource.sourceUrl!);
   }
 
   if (!videoBase64) {

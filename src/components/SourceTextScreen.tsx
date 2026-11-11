@@ -33,7 +33,7 @@ export function SourceTextScreen({ onContinue, onBack }: SourceTextScreenProps) 
 
       <CustomTranslationWorkflow
         duration={videoSource.duration}
-        videoUrl={videoSource.objectUrl}
+        videoUrl={videoSource.objectUrl || videoSource.sourceUrl}
         videoFile={videoSource.file}
         onTranslationApplied={setCustomCues}
       />
