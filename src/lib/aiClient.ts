@@ -16,6 +16,12 @@ export interface TranslationResult {
   hashtags: string[];
 }
 
+export interface PostKitResult {
+  title: string;
+  caption: string;
+  hashtags: string[];
+}
+
 function getKeys(): ApiKeys {
   return loadApiKeys();
 }
@@ -223,6 +229,25 @@ export async function translateText(
     '. Do not leave source-language sentences untranslated. For Burmese, rewrite by meaning in clear, conversational Myanmar suitable for a movie recap, not word-for-word. Return only the translation.';
 
   return aiGenerate(text, systemPrompt);
+}
+
+export async function generatePostKit(script: string): Promise<PostKitResult> {
+  const raw = await aiGenerate(
+    `Create Burmese social post metadata for this movie-recap script. Return ONLY JSON: {"title":"thumbnail title, maximum 30 Burmese characters, no emoji","caption":"one curious Burmese line that does not reveal the ending and ends with exactly one emoji","hashtags":["#tag1","#tag2","#tag3","#tag4","#tag5"]}. Hashtags must be exactly five Burmese story hashtags, each beginning with #, with no spaces inside tags, and never #fyp. Script:\n${script}`,
+    'You write natural Burmese (Myanmar script only) for short-video movie recaps. Never return English explanations or markdown.',
+  );
+  try {
+    const match = raw.match(/\{[\s\S]*}/);
+    const parsed = JSON.parse(match ? match[0] : raw) as { title?: unknown; caption?: unknown; hashtags?: unknown };
+    const hashtags = Array.isArray(parsed.hashtags) ? parsed.hashtags.map(String).filter((tag) => tag.startsWith('#')).slice(0, 5) : [];
+    return {
+      title: String(parsed.title || script.split(/\r?\n/)[0] || 'မြန်မာရုပ်ရှင်ဇာတ်လမ်း'),
+      caption: String(parsed.caption || 'ဒီဇာတ်လမ်းရဲ့ နောက်ဆုံးအဖြစ်အပျက်ကို ခန့်မှန်းနိုင်မလား? 😳'),
+      hashtags: hashtags.length === 5 ? hashtags : ['#ဇာတ်လမ်း', '#အချစ်ဇာတ်လမ်း', '#ဒရာမာ', '#မြန်မာစာတန်းထိုး', '#ရုပ်ရှင်'],
+    };
+  } catch {
+    return { title: script.split(/\r?\n/)[0]?.slice(0, 30) || 'မြန်မာရုပ်ရှင်ဇာတ်လမ်း', caption: 'ဒီဇာတ်လမ်းရဲ့ နောက်ဆုံးအဖြစ်အပျက်ကို ခန့်မှန်းနိုင်မလား? 😳', hashtags: ['#ဇာတ်လမ်း', '#အချစ်ဇာတ်လမ်း', '#ဒရာမာ', '#မြန်မာစာတန်းထိုး', '#ရုပ်ရှင်'] };
+  }
 }
 
 export async function detectMovieTitle(
