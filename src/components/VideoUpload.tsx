@@ -12,6 +12,25 @@ interface VideoUploadProps {
 
 const ACCEPTED_FORMATS = 'video/mp4,video/quicktime,video/webm,video/x-matroska,.mp4,.mov,.webm,.mkv';
 
+function readVideoDuration(file: File): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const probe = document.createElement('video');
+    probe.preload = 'metadata';
+    probe.onloadedmetadata = () => {
+      const value = probe.duration;
+      URL.revokeObjectURL(url);
+      if (Number.isFinite(value) && value > 0) resolve(value);
+      else reject(new Error('The browser could not read the video duration.'));
+    };
+    probe.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('The browser could not decode this video file.'));
+    };
+    probe.src = url;
+  });
+}
+
 export function VideoUpload({ onVideoSelected }: VideoUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -40,7 +59,15 @@ export function VideoUpload({ onVideoSelected }: VideoUploadProps) {
           await ffmpeg.writeFile('input.mp4', await fetchFile(file));
           await ffmpeg.exec(['-i', 'input.mp4', '-vf', 'scale=-2:720:force_original_aspect_ratio=decrease', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '28', '-c:a', 'aac', '-b:a', '96k', '-movflags', '+faststart', 'upload.mp4']);
           const output = await ffmpeg.readFile('upload.mp4');
-          if (typeof output !== 'string') uploadFile = new File([output], 'video-optimized.mp4', { type: 'video/mp4' });
+          if (typeof output !== 'string') {
+            const candidate = new File([output], 'video-optimized.mp4', { type: 'video/mp4' });
+            try {
+              await readVideoDuration(candidate);
+              uploadFile = candidate;
+            } catch {
+              setPrepareStatus('Compressed video could not be decoded. Original video ဖြင့် ဆက်လုပ်ပါမယ်။');
+            }
+          }
           ffmpeg.terminate();
         } catch (compressionError) {
           console.warn('Video compression skipped:', compressionError);
@@ -64,6 +91,10 @@ export function VideoUpload({ onVideoSelected }: VideoUploadProps) {
 
   const handleLoadedMetadata = (e: React.SyntheticEvent<HTMLVideoElement>) => {
     const dur = e.currentTarget.duration;
+    if (!Number.isFinite(dur) || dur <= 0) {
+      setError('The browser could not read this video. Please try MP4 or re-export the file before uploading.');
+      return;
+    }
     setDuration(dur);
       onVideoSelected({
         method: 'upload',
@@ -124,6 +155,7 @@ export function VideoUpload({ onVideoSelected }: VideoUploadProps) {
               src={objectUrl}
               controls
               onLoadedMetadata={handleLoadedMetadata}
+              onError={() => setError('This video cannot be decoded in the browser. Please try another MP4 file.')}
               className="w-full max-h-[400px]"
             />
           </div>

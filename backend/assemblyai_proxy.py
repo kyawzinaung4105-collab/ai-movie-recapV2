@@ -1,6 +1,11 @@
 import os
+import subprocess
+import tempfile
 import time
-from flask import Flask, jsonify, request
+import uuid
+from pathlib import Path
+from urllib.parse import urlparse
+from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
 import requests
 
@@ -8,6 +13,8 @@ app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 ASSEMBLY_BASE = "https://api.assemblyai.com"
+MEDIA_FILES = {}
+ALLOWED_MEDIA_HOSTS = ("youtube.com", "youtu.be", "tiktok.com", "xiaohongshu.com", "xhslink.com")
 
 
 def assembly_request(path: str, api_key: str, method: str = "GET", **kwargs):
@@ -47,9 +54,58 @@ def words_to_cues(words):
     return cues
 
 
+def valid_media_url(url):
+    parsed = urlparse(url)
+    host = (parsed.hostname or "").lower()
+    return parsed.scheme in {"http", "https"} and any(host == item or host.endswith("." + item) for item in ALLOWED_MEDIA_HOSTS)
+
+
+def download_media(url, output):
+    command = [
+        os.environ.get("YTDLP_BIN", "yt-dlp"), "--no-playlist", "--no-warnings", "--restrict-filenames",
+        "--max-filesize", os.environ.get("MEDIA_MAX_FILESIZE", "500M"),
+        "--match-filter", f"duration <= {int(os.environ.get('MEDIA_MAX_DURATION', '900'))}",
+        "-f", "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/b", "--merge-output-format", "mp4",
+        "-o", str(output), url,
+    ]
+    result = subprocess.run(command, capture_output=True, text=True, timeout=300)
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout or "yt-dlp failed").strip()[-1500:]
+        raise RuntimeError(detail)
+
+
 @app.get("/health")
 def health():
-    return jsonify({"ok": True, "service": "assemblyai-local-proxy"})
+    return jsonify({"ok": True, "service": "assemblyai-media-proxy"})
+
+
+@app.post("/resolve")
+def resolve_media():
+    payload = request.get_json(silent=True) or {}
+    url = str(payload.get("url", "")).strip()
+    if not valid_media_url(url):
+        return jsonify({"error": "Only valid YouTube, TikTok, or Rednote links are supported."}), 400
+    temp_dir = Path(tempfile.mkdtemp(prefix="recap-media-"))
+    output = temp_dir / "source.mp4"
+    try:
+        download_media(url, output)
+        if not output.exists() or output.stat().st_size == 0:
+            raise RuntimeError("The downloader returned no playable video file.")
+        token = uuid.uuid4().hex
+        MEDIA_FILES[token] = output
+        return jsonify({"mediaUrl": f"{request.host_url.rstrip('/')}/media/{token}", "fileName": output.name, "mimeType": "video/mp4"})
+    except subprocess.TimeoutExpired:
+        return jsonify({"error": "The link took too long to download. Try a shorter video."}), 504
+    except Exception as error:
+        return jsonify({"error": f"Could not resolve this link: {error}"}), 502
+
+
+@app.get("/media/<token>")
+def resolved_media(token):
+    output = MEDIA_FILES.get(token)
+    if not output or not output.exists():
+        return jsonify({"error": "Resolved media expired. Load the link again."}), 404
+    return send_file(output, mimetype="video/mp4", as_attachment=False, download_name="source.mp4")
 
 
 @app.post("/api/transcribe")
