@@ -36,7 +36,6 @@ export async function runGenerationPipeline(
 
   if (!keys.aiKey) throw new Error('AI API key is missing. Open Settings and add the AI key before generating.');
   if (!keys.assemblyAiKey) throw new Error('AssemblyAI API key is required. Add it in Settings to transcribe the source audio.');
-  if (!keys.elevenLabsKey) throw new Error('ElevenLabs API key is required. Add it in Settings to generate Burmese voice.');
   if (videoSource.method === 'link' && !keys.mediaResolverUrl) {
     throw new Error('Link processing backend is not configured. Open Settings and add the Media Resolver URL before generating.');
   }
@@ -63,8 +62,11 @@ export async function runGenerationPipeline(
   const fullScript = segments.map((segment) => segment.text).join(' ').trim();
   if (!fullScript) throw new Error('Translation returned no usable script. Please try again.');
 
-  onProgress?.('synthesizing');
-  const narrationUrl = await generateElevenLabsVoiceover(fullScript, voiceId);
+  let narrationUrl: string | undefined;
+  if (keys.elevenLabsKey && voiceId) {
+    onProgress?.('synthesizing');
+    narrationUrl = await generateElevenLabsVoiceover(fullScript, voiceId);
+  }
   const postKit = await generatePostKit(fullScript);
 
   onProgress?.('preparing-subtitles');

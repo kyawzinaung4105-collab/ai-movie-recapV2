@@ -54,10 +54,6 @@ export function RecapGenerator({ onOpenSettings }: RecapGeneratorProps) {
       setError('AssemblyAI API key is required to extract the source transcript. Open Settings and add it before generating.');
       return;
     }
-    if (!keys.elevenLabsKey) {
-      setError('ElevenLabs API key is required to generate Burmese voice. Open Settings and add it before generating.');
-      return;
-    }
     if (videoSource.method === 'link' && !keys.mediaResolverUrl) {
       setError('This is a link source, but the Media Resolver URL is missing. Open Settings and configure the server-side resolver first.');
       return;

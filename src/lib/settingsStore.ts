@@ -69,7 +69,7 @@ export function getMissingConfig(): string[] {
     missing.push('AssemblyAI API Key (English transcript)');
   }
   if (!keys.elevenLabsKey) {
-    missing.push('ElevenLabs API Key');
+    // Voiceover is optional: without it, the source audio and translated subtitles still render.
   }
   return missing;
 }

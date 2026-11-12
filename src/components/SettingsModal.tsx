@@ -182,7 +182,7 @@ export function SettingsModal({ open, onClose, onSaved }: SettingsModalProps) {
           {/* ElevenLabs */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="text-sm font-semibold text-slate-700">ElevenLabs API Key</label>
+                <label className="text-sm font-semibold text-slate-700">ElevenLabs API Key (Optional)</label>
               <a
                 href="https://elevenlabs.io/app/settings/api-keys"
                 target="_blank"
@@ -207,7 +207,7 @@ export function SettingsModal({ open, onClose, onSaved }: SettingsModalProps) {
                 {showEleven ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
-            <p className="text-xs text-slate-400">Required for Burmese voice narration. Without it, subtitles still generate but no audio voiceover.</p>
+            <p className="text-xs text-slate-400">Optional Burmese voice narration. Without it, the source audio and translated subtitles can still be rendered.</p>
           </div>
 
           {/* Media resolver backend */}
