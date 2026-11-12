@@ -30,6 +30,8 @@ export interface VideoSource {
   platform?: Platform;
   sourceUrl?: string;
   embedUrl?: string;
+  resolvedMediaUrl?: string;
+  resolverStatus?: 'idle' | 'resolving' | 'ready' | 'error';
   objectUrl?: string;
   duration?: number;
   isDirectFile: boolean;
@@ -100,5 +102,6 @@ export interface EnvConfig {
   hasAssemblyAiKey: boolean;
   hasElevenLabsKey: boolean;
   hasFFmpegBackend: boolean;
+  hasMediaResolver: boolean;
   missing: string[];
 }

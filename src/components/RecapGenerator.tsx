@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { Sparkles, ArrowLeft, Loader2, Settings } from 'lucide-react';
 import { useRecap } from '@/context/RecapContext';
 import { getEnvConfig } from '@/lib/env';
+import { loadApiKeys } from '@/lib/settingsStore';
 import { runGenerationPipeline, getStageInfo } from '@/lib/generationPipeline';
 import { buildSampleCues } from '@/lib/captions';
 import { Button, ErrorBanner } from '@/components/ui/Button';
@@ -42,6 +43,23 @@ export function RecapGenerator({ onOpenSettings }: RecapGeneratorProps) {
     }
     if (!voiceId) {
       setError('Please select a voice.');
+      return;
+    }
+    const keys = loadApiKeys();
+    if (!keys.aiKey) {
+      setError('AI API key is missing. Open Settings and add the AI key before generating.');
+      return;
+    }
+    if (!keys.assemblyAiKey) {
+      setError('AssemblyAI API key is required to extract the source transcript. Open Settings and add it before generating.');
+      return;
+    }
+    if (!keys.elevenLabsKey) {
+      setError('ElevenLabs API key is required to generate Burmese voice. Open Settings and add it before generating.');
+      return;
+    }
+    if (videoSource.method === 'link' && !keys.mediaResolverUrl) {
+      setError('This is a link source, but the Media Resolver URL is missing. Open Settings and configure the server-side resolver first.');
       return;
     }
 

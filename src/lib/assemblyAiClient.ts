@@ -173,7 +173,8 @@ async function transcribeThroughLocalProxy(videoUrl: string | undefined, apiKey:
   const form = new FormData();
   form.append('apiKey', apiKey);
   if (videoFile) {
-    form.append('video', videoFile, videoFile.name);
+    const audioFile = await extractAudioForTranscription(videoFile, onStatus);
+    form.append('video', audioFile, audioFile.name);
   } else {
     if (!videoUrl) throw new Error('Video source မတွေ့ပါ။ Video ကို ပြန်ရွေးပါ။');
     let media: Response;

@@ -8,6 +8,7 @@ export interface ApiKeys {
   assemblyAiKey: string;
   elevenLabsKey: string;
   ffmpegBackendUrl: string;
+  mediaResolverUrl: string;
 }
 
 const STORAGE_KEY = 'ai_movie_recap_keys';
@@ -32,6 +33,7 @@ export function loadApiKeys(): ApiKeys {
         assemblyAiKey: parsed.assemblyAiKey || '',
         elevenLabsKey: parsed.elevenLabsKey || '',
         ffmpegBackendUrl: parsed.ffmpegBackendUrl || '',
+        mediaResolverUrl: parsed.mediaResolverUrl || parsed.ffmpegBackendUrl || '',
       };
     }
   } catch {
@@ -45,6 +47,7 @@ export function loadApiKeys(): ApiKeys {
     assemblyAiKey: '',
     elevenLabsKey: '',
     ffmpegBackendUrl: '',
+    mediaResolverUrl: '',
   };
 }
 

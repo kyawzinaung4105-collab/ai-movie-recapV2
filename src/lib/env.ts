@@ -8,6 +8,7 @@ export function getEnvConfig(): EnvConfig {
     hasAssemblyAiKey: Boolean(keys.assemblyAiKey),
     hasElevenLabsKey: Boolean(keys.elevenLabsKey),
     hasFFmpegBackend: Boolean(keys.ffmpegBackendUrl),
+    hasMediaResolver: Boolean(keys.mediaResolverUrl),
     missing: getMissingConfig(),
   };
 }

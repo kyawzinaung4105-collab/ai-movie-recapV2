@@ -210,17 +210,17 @@ export function SettingsModal({ open, onClose, onSaved }: SettingsModalProps) {
             <p className="text-xs text-slate-400">Required for Burmese voice narration. Without it, subtitles still generate but no audio voiceover.</p>
           </div>
 
-          {/* FFmpeg Backend */}
+          {/* Media resolver backend */}
           <div className="space-y-2">
-            <label className="text-sm font-semibold text-slate-700">FFmpeg Backend URL (Optional)</label>
+            <label className="text-sm font-semibold text-slate-700">Media Resolver URL (Required for links)</label>
             <input
               type="text"
-              value={keys.ffmpegBackendUrl}
-              onChange={(e) => setKeys({ ...keys, ffmpegBackendUrl: e.target.value })}
-              placeholder="https://your-ffmpeg-service.com"
+              value={keys.mediaResolverUrl}
+              onChange={(e) => setKeys({ ...keys, mediaResolverUrl: e.target.value, ffmpegBackendUrl: e.target.value })}
+              placeholder="https://your-media-resolver.example.com"
               className="w-full rounded-xl border border-slate-300 bg-white py-2.5 px-4 text-sm text-slate-900 placeholder-slate-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
             />
-            <p className="text-xs text-slate-400">Required for MP4 export. Without it, editing still works.</p>
+            <p className="text-xs leading-5 text-slate-400">The backend must expose <code>/health</code>, <code>/resolve</code>, and <code>/media/&lt;token&gt;</code>. It downloads YouTube/TikTok/Rednote media server-side; an embed URL alone is never treated as a video file.</p>
           </div>
         </div>
 

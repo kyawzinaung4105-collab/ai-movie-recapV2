@@ -10,6 +10,7 @@ import {
   isTikTokShortLink,
 } from '@/lib/platformDetector';
 import { Button } from '@/components/ui/Button';
+import { resolveVideoLink } from '@/lib/mediaResolver';
 
 interface VideoLinkInputProps {
   onVideoLoaded: (source: VideoSource) => void;
@@ -68,7 +69,7 @@ export function VideoLinkInput({ onVideoLoaded }: VideoLinkInputProps) {
     setPlatform(detected);
   };
 
-  const handleLoad = () => {
+  const handleLoad = async () => {
     setError('');
     setEmbedUrl(null);
     setLoadedSource(null);
@@ -92,30 +93,31 @@ export function VideoLinkInput({ onVideoLoaded }: VideoLinkInputProps) {
     }
 
     setLoading(true);
-    const embed = getEmbedUrl(normalizedUrl, detected);
-
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      const resolved = await resolveVideoLink(normalizedUrl, detected);
+      const embed = getEmbedUrl(normalizedUrl, detected);
       const source: VideoSource = {
         method: 'link',
-        fileName: getPlatformLabel(detected) + ' Video',
+        fileName: resolved.fileName || `${getPlatformLabel(detected)} Video`,
         platform: detected,
         sourceUrl: normalizedUrl,
         embedUrl: embed || undefined,
+        resolvedMediaUrl: resolved.mediaUrl,
+        resolverStatus: 'ready',
         isDirectFile: false,
       };
       setLoadedSource(source);
       onVideoLoaded(source);
-
       if (embed) {
         setEmbedUrl(embed);
       } else if (detected === 'tiktok' && isTikTokShortLink(normalizedUrl)) {
-        // TikTok short link — use official embed script
         setTikTokShortUrl(normalizedUrl);
-      } else {
-        setError('Video unavailable or cannot be accessed.');
       }
-    }, 400);
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : 'The link could not be processed by the media backend.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -166,11 +168,6 @@ export function VideoLinkInput({ onVideoLoaded }: VideoLinkInputProps) {
           <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0" />
           <div>
             <span>{error}</span>
-            {loadedSource && !embedUrl && !tikTokShortUrl && (
-              <p className="mt-1 text-amber-600">
-                You can still proceed to recap — the video will be processed via a backend adapter.
-              </p>
-            )}
           </div>
         </div>
       )}
@@ -193,7 +190,7 @@ export function VideoLinkInput({ onVideoLoaded }: VideoLinkInputProps) {
                   {getPlatformLabel(platform)}
                 </span>
                 <span className="text-slate-400">·</span>
-                <span className="text-slate-500">Link loaded</span>
+                <span className="text-emerald-600">Link ready for processing</span>
               </div>
             </div>
           )}
@@ -216,17 +213,12 @@ export function VideoLinkInput({ onVideoLoaded }: VideoLinkInputProps) {
                 {getPlatformLabel(platform)}
               </span>
               <span className="text-slate-400">·</span>
-              <span className="text-slate-500">Short link loaded</span>
+                <span className="text-emerald-600">Link ready for processing</span>
             </div>
           </div>
         </div>
       )}
 
-      {loadedSource && !embedUrl && !tikTokShortUrl && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-          This video cannot be embedded in-browser, but you can still proceed to recap. A backend video-processing adapter will handle the actual video processing.
-        </div>
-      )}
     </div>
   );
 }
