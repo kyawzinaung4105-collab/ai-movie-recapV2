@@ -1,15 +1,19 @@
 import { loadApiKeys } from './settingsStore';
 import {
   analyzeVideoAndGenerateScript,
+  generatePostKit,
+  translateText,
   type TranscriptSegment,
 } from './aiClient';
 import { generateElevenLabsVoiceover } from './elevenlabsClient';
 import type { CaptionCue } from '@/types';
+import { transcribeVideoWithAssemblyAI } from './assemblyAiClient';
 
 export interface GenerationOptions {
   videoSource: {
     method: 'upload' | 'link';
     fileName: string;
+    file?: File;
     objectUrl?: string;
     sourceUrl?: string;
     embedUrl?: string;
@@ -82,6 +86,40 @@ export async function runGenerationPipeline(
   }
   if (!keys.elevenLabsKey) {
     throw new Error('ElevenLabs API key is missing. Add it in Settings to generate Burmese voice automatically.');
+  }
+
+  // Fast path for local files: transcribe the audio with timestamps, then send only
+  // the transcript text to the AI translator instead of uploading the whole video.
+  if (videoSource.method === 'upload' && videoSource.file && keys.assemblyAiKey) {
+    if (onProgress) onProgress('analyzing');
+    const sourceCues = await transcribeVideoWithAssemblyAI(videoSource.objectUrl, undefined, videoSource.file);
+    if (!sourceCues.length) throw new Error('No spoken dialogue was detected in this video.');
+    if (onProgress) onProgress('translating');
+    const sourceText = sourceCues.map((cue) => cue.text).join('\n');
+    const translatedText = await translateText(sourceText, language);
+    const translatedLines = translatedText.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+    const segments: TranscriptSegment[] = sourceCues.map((cue, index) => ({
+      start: cue.start,
+      end: cue.end,
+      text: translatedLines[index] || translatedText.trim(),
+    }));
+    const fullScript = segments.map((segment) => segment.text).join(' ');
+    if (onProgress) onProgress('synthesizing');
+    const narrationUrl = await generateElevenLabsVoiceover(fullScript, voiceId);
+    const postKit = await generatePostKit(fullScript);
+    if (onProgress) onProgress('preparing-subtitles');
+    if (onProgress) onProgress('complete');
+    return {
+      success: true,
+      movieTitle: postKit.title,
+      titleConfident: true,
+      script: fullScript,
+      caption: postKit.caption,
+      hashtags: postKit.hashtags,
+      narrationUrl,
+      segments,
+      cues: segments,
+    };
   }
 
   // ---- Stage 1: Analyze video ----
