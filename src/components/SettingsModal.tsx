@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, Key, Eye, EyeOff, ExternalLink, CheckCircle2 } from 'lucide-react';
 import { loadApiKeys, saveApiKeys, type ApiKeys, type AiProvider } from '@/lib/settingsStore';
+import { testApiKey, type ApiKeyKind } from '@/lib/apiKeyTester';
 import { Button } from '@/components/ui/Button';
 
 interface SettingsModalProps {
@@ -15,11 +16,14 @@ export function SettingsModal({ open, onClose, onSaved }: SettingsModalProps) {
   const [showAssembly, setShowAssembly] = useState(false);
   const [showEleven, setShowEleven] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [testing, setTesting] = useState<ApiKeyKind | null>(null);
+  const [testStatus, setTestStatus] = useState<Partial<Record<ApiKeyKind, { ok: boolean; message: string }>>>({});
 
   useEffect(() => {
     if (open) {
       setKeys(loadApiKeys());
       setSaved(false);
+      setTestStatus({});
     }
   }, [open]);
 
@@ -32,6 +36,19 @@ export function SettingsModal({ open, onClose, onSaved }: SettingsModalProps) {
     setTimeout(() => {
       onClose();
     }, 800);
+  };
+
+  const handleTest = async (kind: ApiKeyKind) => {
+    setTesting(kind);
+    setTestStatus((current) => ({ ...current, [kind]: undefined }));
+    try {
+      const message = await testApiKey(kind, keys);
+      setTestStatus((current) => ({ ...current, [kind]: { ok: true, message } }));
+    } catch (error) {
+      setTestStatus((current) => ({ ...current, [kind]: { ok: false, message: error instanceof Error ? error.message : 'Key test failed.' } }));
+    } finally {
+      setTesting(null);
+    }
   };
 
   return (
@@ -56,10 +73,10 @@ export function SettingsModal({ open, onClose, onSaved }: SettingsModalProps) {
 
           <div className="space-y-2 rounded-xl border border-indigo-200 bg-indigo-50 p-4">
             <div className="flex items-center justify-between gap-2">
-              <label className="text-sm font-semibold text-indigo-900">AssemblyAI API Key (Required for free transcript)</label>
-              <a href="https://www.assemblyai.com/app/account" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-indigo-700 hover:text-indigo-900">
-                Get Free Key <ExternalLink className="h-3 w-3" />
-              </a>
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={() => void handleTest('assembly')} disabled={testing !== null} className="rounded-lg border border-indigo-300 bg-white px-2.5 py-1 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 disabled:opacity-50">{testing === 'assembly' ? 'Testing...' : 'Test key'}</button>
+                <a href="https://www.assemblyai.com/app/account" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-indigo-700 hover:text-indigo-900">Get Free Key <ExternalLink className="h-3 w-3" /></a>
+              </div>
             </div>
             <div className="relative">
               <input
@@ -73,6 +90,7 @@ export function SettingsModal({ open, onClose, onSaved }: SettingsModalProps) {
                 {showAssembly ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
+            {testStatus.assembly && <p className={`text-xs ${testStatus.assembly.ok ? 'text-emerald-700' : 'text-red-700'}`}>{testStatus.assembly.message}</p>}
             <p className="text-xs leading-5 text-indigo-700">Video ထဲက Chinese၊ Korean၊ English စတဲ့ source speech ကို language အလိုအလျောက်သိပြီး timestamp ပါတဲ့ transcript ပြောင်းပေးပါသည်။ Key ကို server မတင်ဘဲ ဒီ browser ထဲမှာပဲ သိမ်းထားပါသည်။</p>
           </div>
 
@@ -110,6 +128,7 @@ export function SettingsModal({ open, onClose, onSaved }: SettingsModalProps) {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-sm font-semibold text-slate-700">AI API Key</label>
+              <button type="button" onClick={() => void handleTest('ai')} disabled={testing !== null} className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50">{testing === 'ai' ? 'Testing...' : 'Test key'}</button>
               {keys.aiProvider === 'gemini' && (
                 <a
                   href="https://aistudio.google.com/api-keys"
@@ -146,6 +165,7 @@ export function SettingsModal({ open, onClose, onSaved }: SettingsModalProps) {
                 {showAi ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
+            {testStatus.ai && <p className={`text-xs ${testStatus.ai.ok ? 'text-emerald-700' : 'text-red-700'}`}>{testStatus.ai.message}</p>}
             <p className="text-xs text-slate-400">
               Required. Used for video transcription, translation, and title detection.
             </p>
@@ -182,7 +202,7 @@ export function SettingsModal({ open, onClose, onSaved }: SettingsModalProps) {
           {/* ElevenLabs */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-                <label className="text-sm font-semibold text-slate-700">ElevenLabs API Key (Optional)</label>
+                <div className="flex items-center gap-2"><label className="text-sm font-semibold text-slate-700">ElevenLabs API Key (Optional)</label><button type="button" onClick={() => void handleTest('eleven')} disabled={testing !== null} className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50">{testing === 'eleven' ? 'Testing...' : 'Test key'}</button></div>
               <a
                 href="https://elevenlabs.io/app/settings/api-keys"
                 target="_blank"
@@ -207,6 +227,7 @@ export function SettingsModal({ open, onClose, onSaved }: SettingsModalProps) {
                 {showEleven ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
+            {testStatus.eleven && <p className={`text-xs ${testStatus.eleven.ok ? 'text-emerald-700' : 'text-red-700'}`}>{testStatus.eleven.message}</p>}
             <p className="text-xs text-slate-400">Optional Burmese voice narration. Without it, the source audio and translated subtitles can still be rendered.</p>
           </div>
 
