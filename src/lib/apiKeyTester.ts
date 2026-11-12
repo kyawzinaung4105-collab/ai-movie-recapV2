@@ -1,4 +1,4 @@
-import type { ApiKeys } from './settingsStore';
+import { normalizeApiKey, type ApiKeys } from './settingsStore';
 
 export type ApiKeyKind = 'assembly' | 'ai' | 'eleven';
 
@@ -20,30 +20,36 @@ async function check(response: Response): Promise<void> {
     if (/user location|location is not supported|not supported for the api/i.test(detail)) {
       throw new Error('This Gemini API key is not available in the current region.');
     }
+    if (/api key not valid|invalid api key|incorrect api key|unauthorized/i.test(detail)) {
+      throw new Error('The provider rejected this value. Check that the selected provider matches this key and paste only the key text, without a provider name or Bearer prefix.');
+    }
     throw new Error(`${response.status}: ${detail}`);
   }
 }
 
 export async function testApiKey(kind: ApiKeyKind, keys: ApiKeys): Promise<string> {
+  const assemblyKey = normalizeApiKey(keys.assemblyAiKey);
+  const aiKey = normalizeApiKey(keys.aiKey);
+  const elevenKey = normalizeApiKey(keys.elevenLabsKey);
   if (kind === 'assembly') {
-    if (!keys.assemblyAiKey.trim()) throw new Error('Enter an AssemblyAI API key first.');
-    await check(await fetch('https://api.assemblyai.com/v2/user', { headers: { authorization: keys.assemblyAiKey.trim() } }));
+    if (!assemblyKey) throw new Error('Enter an AssemblyAI API key first.');
+    await check(await fetch('https://api.assemblyai.com/v2/user', { headers: { authorization: assemblyKey } }));
     return 'AssemblyAI key is valid.';
   }
 
   if (kind === 'eleven') {
-    if (!keys.elevenLabsKey.trim()) throw new Error('Enter an ElevenLabs API key first.');
-    await check(await fetch('https://api.elevenlabs.io/v1/user', { headers: { 'xi-api-key': keys.elevenLabsKey.trim() } }));
+    if (!elevenKey) throw new Error('Enter an ElevenLabs API key first.');
+    await check(await fetch('https://api.elevenlabs.io/v1/user', { headers: { 'xi-api-key': elevenKey } }));
     return 'ElevenLabs key is valid.';
   }
 
-  if (!keys.aiKey.trim()) throw new Error('Enter an AI API key first.');
+  if (!aiKey) throw new Error('Enter an AI API key first.');
   if (keys.aiProvider === 'gemini') {
-    await check(await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(keys.aiKey.trim())}`));
+    await check(await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(aiKey)}`));
     return 'Gemini key is valid and available in this region.';
   }
 
   const baseUrl = (keys.aiBaseUrl || 'https://api.openai.com/v1').replace(/\/$/, '');
-  await check(await fetch(`${baseUrl}/models`, { headers: { authorization: `Bearer ${keys.aiKey.trim()}` } }));
+  await check(await fetch(`${baseUrl}/models`, { headers: { authorization: `Bearer ${aiKey}` } }));
   return `${keys.aiProvider === 'custom' ? 'Custom AI' : 'OpenAI'} key is valid.`;
 }

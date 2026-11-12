@@ -13,12 +13,16 @@ export interface ApiKeys {
 
 const STORAGE_KEY = 'ai_movie_recap_keys';
 
+export function normalizeApiKey(value: unknown): string {
+  return String(value || '').trim().replace(/^['"]|['"]$/g, '').replace(/^Bearer\s+/i, '').trim();
+}
+
 export function loadApiKeys(): ApiKeys {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       const parsed = JSON.parse(saved);
-      const key = parsed.aiKey || parsed.geminiKey || parsed.openAIKey || '';
+      const key = normalizeApiKey(parsed.aiKey || parsed.geminiKey || parsed.openAIKey || '');
       let provider: AiProvider = parsed.aiProvider;
       if (!provider) {
         if (key.startsWith('AIza') || key.startsWith('AQ.')) provider = 'gemini';
@@ -28,12 +32,12 @@ export function loadApiKeys(): ApiKeys {
       return {
         aiKey: key,
         aiProvider: provider,
-        aiBaseUrl: parsed.aiBaseUrl || parsed.apiBaseUrl || '',
+        aiBaseUrl: String(parsed.aiBaseUrl || parsed.apiBaseUrl || '').trim().replace(/\/$/, ''),
         aiModel: parsed.aiModel || (provider === 'gemini' ? 'gemini-3.6-flash' : 'gpt-4o-mini'),
-        assemblyAiKey: parsed.assemblyAiKey || '',
-        elevenLabsKey: parsed.elevenLabsKey || '',
-        ffmpegBackendUrl: parsed.ffmpegBackendUrl || '',
-        mediaResolverUrl: parsed.mediaResolverUrl || parsed.ffmpegBackendUrl || '',
+        assemblyAiKey: normalizeApiKey(parsed.assemblyAiKey),
+        elevenLabsKey: normalizeApiKey(parsed.elevenLabsKey),
+        ffmpegBackendUrl: String(parsed.ffmpegBackendUrl || '').trim(),
+        mediaResolverUrl: String(parsed.mediaResolverUrl || parsed.ffmpegBackendUrl || '').trim(),
       };
     }
   } catch {
