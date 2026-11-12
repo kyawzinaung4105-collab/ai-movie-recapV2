@@ -70,6 +70,9 @@ async function geminiGenerate(
 
   if (!res.ok) {
     const err = await res.text();
+    if (res.status === 400 && /user location|location is not supported|not supported for the api/i.test(err)) {
+      throw new Error('Gemini API ကို လက်ရှိအသုံးပြုနေတဲ့ region မှာ အသုံးပြုခွင့်မရှိပါ။ Settings မှာ AI Provider ကို OpenAI သို့မဟုတ် အလုပ်လုပ်တဲ့ OpenAI-compatible Custom provider ပြောင်းပြီး သက်ဆိုင်ရာ API key ထည့်ပါ။');
+    }
     throw new Error(`Gemini API error: ${res.status} ${err}`);
   }
 
